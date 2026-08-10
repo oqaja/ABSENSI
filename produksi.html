@@ -96,6 +96,26 @@
   }
   .placeholder-emoji { font-size: 38px; margin-bottom: 10px; }
   .placeholder-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+
+  /* Komponen report */
+  label { font-size: 13px; color: var(--ink-soft); font-weight: 700; display: block; margin-bottom: 6px; }
+  input[type=date] {
+    width: 100%; padding: 11px 12px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: var(--surface-2);
+    color: var(--ink); font-size: 15px; font-family: var(--font-body);
+  }
+  .status-note { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; margin-top: 10px; min-height: 16px; }
+  .status-note.error { color: var(--danger-text); }
+  pre.preview {
+    white-space: pre-wrap; word-wrap: break-word;
+    font-family: 'SF Mono', Consolas, Menlo, monospace;
+    font-size: 13.5px; line-height: 1.6;
+    background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px; margin: 0; min-height: 60px;
+    color: var(--ink);
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled:active { transform: none; box-shadow: var(--shadow-pop); }
 </style>
 </head>
 <body>
@@ -147,25 +167,149 @@
     <span style="font-size:12.5px; color:var(--ink-soft); font-weight:600" id="catatanHr"></span>
   </div>
 
-  <div class="placeholder-card">
-    <div class="placeholder-emoji">📝</div>
-    <div class="placeholder-title">Report belum dipasang</div>
-    <p class="info-text" style="margin-bottom:0">
-      Halaman ini sudah aman dan siap diisi.<br>
-      Isi laporannya menyusul begitu formatnya ditentukan.
-    </p>
+  <div class="card">
+    <label for="datePicker">Pilih tanggal</label>
+    <input type="date" id="datePicker">
+    <div class="status-note" id="status">Memuat data…</div>
+  </div>
+
+  <div class="card">
+    <label>Preview report</label>
+    <pre class="preview" id="preview">—</pre>
+    <button class="btn" id="shareBtn" disabled>Share ke WhatsApp</button>
+    <button class="btn btn-secondary" id="copyBtn" disabled>Copy teks</button>
   </div>
 </div>
 
 <script>
 // =====================================================================
-// GANTI kalau URL Apps Script berubah (harus sama dengan di index.html)
+// URL Apps Script Absensi — dipakai buat penjaga akses (getProfil).
+// GANTI kalau URL Apps Script Absensi berubah.
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDjfUyqGAaSfJxBHZ2ULgXyttVSgTJFBt9D8KF6m-wvbcNEzEbol9DbtzzPoxMXP79/exec';
+
+// URL Apps Script Dashboard Kulturama (Code_Kreatif.gs) — dipakai buat
+// ambil data report. Ini project yang SAMA dipakai REPORT-KREATIF-index.html.
+// Kalau sudah punya nilainya di sana, salin persis ke sini.
+const APPS_SCRIPT_URL_DASHBOARD = 'https://script.google.com/macros/s/AKfycbwpkn1SQevB1HrWHrytZfBel7SNmfd6k6yGz0mQ-w1DaF9oUOUEbYnhpUmlEm020NW1aQ/exec';
 
 // Role yang berhak membuka halaman ini. HR selalu boleh (superuser).
 const ROLE_HALAMAN = 'produksi';
 const NAMA_ROLE = 'Produksi';
 // =====================================================================
+
+const BULAN = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+
+const datePicker = document.getElementById('datePicker');
+const statusEl = document.getElementById('status');
+const previewEl = document.getElementById('preview');
+const shareBtn = document.getElementById('shareBtn');
+const copyBtn = document.getElementById('copyBtn');
+
+let currentText = '';
+
+function todayISO() {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d - tzOffset).toISOString().slice(0, 10);
+}
+
+function formatTanggalLabel(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${BULAN[m - 1]} ${y}`;
+}
+
+function fmtNum(n) {
+  const num = Number(n);
+  if (isNaN(num)) return String(n ?? '-');
+  return num.toLocaleString('en-US');
+}
+
+// Affiliate sengaja TIDAK ditampilkan di teks WhatsApp (cuma disimpan di data).
+function buildReportText(data) {
+  const tgl = formatTanggalLabel(data.date);
+  const k = data.konten || {};
+  let body = '';
+
+  if (k.videoPanjang) {
+    body += `*Vid. Panjang SP*\n* Target = ${fmtNum(k.videoPanjang.target)} Vid/bulan\n* Progres = ${k.videoPanjang.progres}\n`;
+  }
+  if (k.videoPendek) {
+    body += `*Vid. Pendek SP*\n* Target = ${fmtNum(k.videoPendek.target)} Vid/bulan\n* Progres = ${k.videoPendek.progres}\n`;
+  }
+  if (k.carousel) {
+    body += `*Carousel SP*\n* Target = ${fmtNum(k.carousel.target)}/bulan\n* Progres = ${k.carousel.progres}\n`;
+  }
+
+  return `*REPORT PRODUKSI - ${tgl}*\n—\n${body}`.trim();
+}
+
+async function loadReport(dateISO) {
+  statusEl.textContent = 'Memuat data…';
+  statusEl.classList.remove('error');
+  shareBtn.disabled = true;
+  copyBtn.disabled = true;
+
+  if (!APPS_SCRIPT_URL_DASHBOARD || APPS_SCRIPT_URL_DASHBOARD.includes('GANTI_DENGAN')) {
+    statusEl.textContent = 'Belum di-setup: isi APPS_SCRIPT_URL_DASHBOARD di kode dulu.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  try {
+    const url = `${APPS_SCRIPT_URL_DASHBOARD}?action=reportProduksi&date=${dateISO}&token=${encodeURIComponent(getToken())}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    // Sesi habis di tengah pemakaian (token kadaluarsa pas lagi buka halaman ini)
+    if (data.code === 'UNAUTHORIZED' || data.code === 'FORBIDDEN') {
+      statusEl.textContent = 'Sesi berubah. Muat ulang halaman ini.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+
+    if (data.error === 'month_not_found') {
+      statusEl.textContent = 'Belum ada data untuk bulan ini di sheet REPORT PRODUKSI.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+    if (data.error) {
+      statusEl.textContent = 'Data belum ada di sheet.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+
+    currentText = buildReportText(data);
+    previewEl.textContent = currentText;
+    statusEl.textContent = 'Data ditemukan ✓';
+    shareBtn.disabled = false;
+    copyBtn.disabled = false;
+  } catch (err) {
+    statusEl.textContent = 'Gagal ambil data. Cek koneksi internet.';
+    statusEl.classList.add('error');
+    console.error(err);
+  }
+}
+
+datePicker.addEventListener('change', () => loadReport(datePicker.value));
+
+shareBtn.addEventListener('click', () => {
+  if (!currentText) return;
+  window.open(`https://wa.me/?text=${encodeURIComponent(currentText)}`, '_blank');
+});
+
+copyBtn.addEventListener('click', async () => {
+  if (!currentText) return;
+  try {
+    await navigator.clipboard.writeText(currentText);
+    copyBtn.textContent = 'Tersalin ✓';
+    setTimeout(() => (copyBtn.textContent = 'Copy teks'), 1500);
+  } catch (err) {
+    console.error(err);
+  }
+});
 
 function tampilkanLayar(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -210,6 +354,10 @@ async function periksaAkses() {
       document.getElementById('catatanHr').textContent = 'Dibuka sebagai HR';
     }
     tampilkanLayar('screenUtama');
+
+    const tgl = todayISO();
+    datePicker.value = tgl;
+    loadReport(tgl);
 
   } catch (err) {
     document.getElementById('tolakPesan').textContent =
