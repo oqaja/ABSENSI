@@ -340,7 +340,9 @@ async function periksaAkses() {
     }
 
     const role = (data.role || '').toLowerCase();
-    const boleh = (role === ROLE_HALAMAN) || (role === 'hr');
+    // HR & admin = superuser (admin dipakai buat pihak eksternal
+    // yang butuh akses penuh tapi bukan karyawan).
+    const boleh = (role === ROLE_HALAMAN) || (role === 'hr') || (role === 'admin');
 
     if (!boleh) {
       document.getElementById('tolakPesan').textContent =
@@ -350,8 +352,8 @@ async function periksaAkses() {
     }
 
     document.getElementById('sapaan').textContent = 'Halo, ' + data.nama;
-    if (role === 'hr') {
-      document.getElementById('catatanHr').textContent = 'Dibuka sebagai HR';
+    if (role === 'hr' || role === 'admin') {
+      document.getElementById('catatanHr').textContent = 'Dibuka sebagai ' + role.toUpperCase();
     }
     tampilkanLayar('screenUtama');
 
