@@ -434,6 +434,32 @@
   .hr-emp-stats span.ok { color: var(--mint-text); font-weight: 700; }
   .hr-emp-arrow { color: var(--ink-faint); font-size: 18px; flex-shrink: 0; }
 
+  /* Panel Kelola PIN */
+  .hr-kr-item { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+  .hr-kr-item:last-child { border-bottom: none; }
+  .hr-kr-info { flex: 1; min-width: 0; }
+  .hr-kr-nama { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .hr-kr-meta { font-size: 12px; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .hr-kr-role {
+    background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+    letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .hr-kr-pin-badge { font-size: 11.5px; font-weight: 700; }
+  .hr-kr-pin-badge.terdaftar { color: var(--mint-text); }
+  .hr-kr-pin-badge.kosong { color: var(--ink-faint); }
+  .hr-kr-reset-btn {
+    flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--danger);
+    background: var(--surface); color: var(--danger-text); font-size: 12.5px; font-weight: 800;
+    cursor: pointer; font-family: var(--font-body);
+  }
+  .hr-kr-reset-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .hr-kr-search {
+    width: 100%; padding: 11px 13px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+    background: var(--surface-2); font-size: 14px; font-family: var(--font-body); color: var(--ink);
+    margin-bottom: 10px;
+  }
+
   .riwayat-dinas-badge { font-size: 10px; font-weight: 800; color: var(--purple-text); background: var(--purple-ink); padding: 2px 7px; border-radius: 6px; }
   .riwayat-item.clickable { cursor: pointer; }
   .riwayat-item.clickable:active { opacity: 0.7; }
@@ -821,7 +847,9 @@
     </div>
 
     <div class="card" id="hrCardBulanan">
-      <div class="card-title">🗓️ Rekap Bulanan</div>
+      <div class="card-title">🗓️ Rekap Bulanan
+        <span class="muted"><button class="hr-exit-btn" style="font-size:12.5px" onclick="hrGoToKaryawan()">🔑 Kelola PIN</button></span>
+      </div>
       <div class="hr-filter-row">
         <select id="hrFilterBulan"></select>
         <input type="number" id="hrFilterTahun" min="2020" max="2100">
@@ -875,6 +903,24 @@
         <button class="btn" onclick="hrKirimKeWA()">Kirim ke WhatsApp</button>
       </div>
       <div class="hr-copy-toast" id="hrCopyToast"></div>
+    </div>
+  </div>
+
+  <!-- KELOLA PIN KARYAWAN -->
+  <div class="page" id="page-hr-karyawan">
+    <div class="hr-top-bar">
+      <div class="hr-back-btn" onclick="hrBackToHome()">←</div>
+      <h1>Kelola PIN</h1>
+    </div>
+    <p class="info-text" style="margin-top:-8px; margin-bottom:14px; text-align:left">
+      Reset PIN dipakai kalau ada yang lupa PIN atau ganti HP. Setelah direset, orang itu perlu daftar ulang PIN baru dari awal.
+    </p>
+
+    <div class="card">
+      <input type="text" class="hr-kr-search" id="hrKrSearch" placeholder="Cari nama…" oninput="hrRenderKaryawanList()">
+      <div id="hrKrLoadingBox" class="loading-text">Memuat data...</div>
+      <div id="hrKrErrorBox"></div>
+      <div id="hrKrList"></div>
     </div>
   </div>
 
@@ -2525,6 +2571,112 @@ function hrShowDetail(nama, absensi, month, year, tanggal) {
 }
 
 function hrBackToHome() { hrGoPage('home'); }
+
+// ===== KELOLA PIN KARYAWAN =====
+let hrKaryawanCache = [];
+
+function hrGoToKaryawan() {
+  hrGoPage('karyawan');
+  hrLoadKaryawanList();
+}
+
+async function hrLoadKaryawanList() {
+  const loading = document.getElementById('hrKrLoadingBox');
+  const errBox = document.getElementById('hrKrErrorBox');
+  const listBox = document.getElementById('hrKrList');
+  loading.style.display = 'block';
+  errBox.innerHTML = '';
+  listBox.innerHTML = '';
+
+  try {
+    const url = SCRIPT_URL + '?action=getKaryawanHR&token=' + encodeURIComponent(tokenHR());
+    const res = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (data.result !== 'success') {
+      if (data.code === 'UNAUTHORIZED' || data.message === 'Unauthorized') {
+        hrHandleUnauthorized(errBox);
+      } else {
+        errBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Error') + '</div>';
+      }
+      return;
+    }
+
+    hrKaryawanCache = data.data; // [{ nama, role, terdaftar }]
+    hrRenderKaryawanList();
+  } catch (e) {
+    loading.style.display = 'none';
+    errBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
+}
+
+function hrRenderKaryawanList() {
+  const container = document.getElementById('hrKrList');
+  const q = (document.getElementById('hrKrSearch').value || '').trim().toLowerCase();
+
+  const filtered = hrKaryawanCache.filter(k => k.nama.toLowerCase().includes(q));
+  if (!filtered.length) {
+    container.innerHTML = '<div class="riwayat-empty">' + (hrKaryawanCache.length ? 'Tidak ada nama yang cocok.' : 'Belum ada karyawan terdaftar di sheet KARYAWAN.') + '</div>';
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => a.nama.localeCompare(b.nama));
+  container.innerHTML = sorted.map(k => {
+    const namaSafe = escapeHtml(k.nama);
+    const badgePin = k.terdaftar
+      ? '<span class="hr-kr-pin-badge terdaftar">🔒 PIN aktif</span>'
+      : '<span class="hr-kr-pin-badge kosong">Belum daftar PIN</span>';
+    return `<div class="hr-kr-item">
+      <div class="hr-kr-info">
+        <div class="hr-kr-nama">${namaSafe}</div>
+        <div class="hr-kr-meta">
+          <span class="hr-kr-role">${escapeHtml(k.role || '—')}</span>
+          ${badgePin}
+        </div>
+      </div>
+      <button class="hr-kr-reset-btn" ${k.terdaftar ? '' : 'disabled'} onclick="hrResetPinKaryawan('${namaSafe.replace(/'/g, "\\'")}')">
+        Reset PIN
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function hrResetPinKaryawan(nama) {
+  const konfirmasi = confirm(
+    'Reset PIN "' + nama + '"?\n\n' +
+    'Orang ini akan langsung ter-logout dari HP-nya dan wajib daftar ulang PIN baru dari awal. Aksi ini tidak bisa dibatalkan.'
+  );
+  if (!konfirmasi) return;
+
+  const errBox = document.getElementById('hrKrErrorBox');
+  errBox.innerHTML = '';
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'resetPin', token: tokenHR(), nama })
+    });
+    const data = await res.json();
+
+    if (data.result !== 'success') {
+      if (data.code === 'UNAUTHORIZED' || data.message === 'Unauthorized') {
+        hrHandleUnauthorized(errBox);
+      } else {
+        errBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Gagal reset PIN.') + '</div>';
+      }
+      return;
+    }
+
+    // Perbarui status di cache lokal tanpa perlu fetch ulang semuanya
+    const item = hrKaryawanCache.find(k => k.nama === nama);
+    if (item) item.terdaftar = false;
+    hrRenderKaryawanList();
+  } catch (e) {
+    errBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
+}
 
 function hrRenderDetailRiwayat(absensi, month, year) {
   const container = document.getElementById('hrDetailRiwayat');
