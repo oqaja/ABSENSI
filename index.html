@@ -1280,7 +1280,8 @@ function terapkanRoleKeUI() {
   wrap.innerHTML = '';
 
   // HR bisa masuk ke semua menu role; role lain cuma menunya sendiri.
-  const boleh = (role === 'hr') ? Object.keys(MENU_ROLE) : (MENU_ROLE[role] ? [role] : []);
+  // HR & admin = superuser, lihat semua menu role. Yang lain cuma menunya sendiri.
+  const boleh = isSuperuserRole(role) ? Object.keys(MENU_ROLE) : (MENU_ROLE[role] ? [role] : []);
   if (!boleh.length) return;
 
   boleh.forEach(r => {
@@ -2279,11 +2280,16 @@ function hrLogout() {
   hrGoPage('gate');
 }
 
+// HR & admin sama-sama superuser (admin dipakai buat pihak eksternal
+// yang butuh akses penuh tapi bukan karyawan). Dipakai di banyak tempat,
+// jadi disatukan di sini biar konsisten.
+function isSuperuserRole(role) { return role === 'hr' || role === 'admin'; }
+
 // Dipanggil tiap kali server bilang token invalid/expired.
 function hrHandleUnauthorized(errBox) {
-  // Masuk lewat akun ber-role hr: yang habis itu sesi utama, jadi seluruh
-  // app perlu login ulang — bukan cuma Mode HR.
-  if (getRole() === 'hr') {
+  // Masuk lewat akun superuser (hr/admin): yang habis itu sesi utama, jadi
+  // seluruh app perlu login ulang — bukan cuma Mode HR.
+  if (isSuperuserRole(getRole())) {
     errBox.innerHTML = '<div class="status-box status-fail">Sesi kamu sudah habis. Masukkan PIN lagi.</div>';
     setTimeout(() => { keluarModeHR(); sesiHabis(); }, 900);
     return;
@@ -2296,11 +2302,11 @@ function hrHandleUnauthorized(errBox) {
 
 // ===== FETCH HELPER =====
 // Ada dua jalan masuk ke Mode HR:
-//   1. Login biasa dengan akun ber-role "hr" -> token utama sudah cukup
-//   2. Login lewat HR key (buat yang tidak punya akun role hr) -> pakai hr_token
-// Yang pertama didahulukan supaya HR tidak perlu login dua kali.
+//   1. Login biasa dengan akun ber-role "hr" atau "admin" -> token utama sudah cukup
+//   2. Login lewat HR key (buat yang tidak punya akun superuser) -> pakai hr_token
+// Yang pertama didahulukan supaya superuser tidak perlu login dua kali.
 function tokenHR() {
-  if (getRole() === 'hr' && getToken()) return getToken();
+  if (isSuperuserRole(getRole()) && getToken()) return getToken();
   return localStorage.getItem('hr_token') || '';
 }
 
