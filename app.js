@@ -58,6 +58,12 @@ let latitude = '', longitude = '', photoBase64 = '';
 let stream = null, html5QrCode = null;
 let absensiCache = null;
 let chartInstance = null;
+
+// Status absen HARI INI milik user yang lagi login — dipakai buat nyoroti
+// tombol yang disarankan & buat pop-up konfirmasi kalau pilihannya kelihatan
+// gak masuk akal (misal Absen Masuk lagi padahal tadi udah, atau Absen Pulang
+// padahal belum pernah Absen Masuk hari ini).
+let statusAbsenHariIni = { hasMasuk: false, hasPulang: false, hasDinas: false, masukRow: null, pulangRow: null };
 let sudahAbsenHariIni = false; // status absen hari ini, dipakai buat auto-hide card countdown
 
 function hashString(str) {
@@ -567,6 +573,7 @@ function initAbsenPage() {
   if (savedNama && sudahUnlock) {
     nama = savedNama;
     showAbsenStep(2);
+    refreshStatusAbsenHariIni(); // async — nyorot tombol begitu data hari ini kebaca
     return;
   }
 
@@ -590,7 +597,75 @@ function showAbsenStep(id) {
 // sempat kebuka, arahkan balik ke gate.
 function daftarDevice() { cekAppGate(); }
 function verifikasiPin() { cekAppGate(); }
+function jamLabel(row) {
+  return String(row.jam).padStart(2, '0') + ':' + String(row.menit).padStart(2, '0');
+}
+
+// Ambil ulang data absensi HARI INI (selalu fresh, gak pakai cache bulan lain)
+// buat nentuin tombol mana yang disarankan & buat cek konflik pas milih jenis.
+async function refreshStatusAbsenHariIni() {
+  const now = new Date();
+  absensiCache = null; // paksa fetch baru — absensiCache dari Profil bisa nyimpen bulan lain
+  const rows = await fetchAbsensi(nama, now.getMonth() + 1, now.getFullYear());
+  const todayRows = (rows || []).filter(r => r.tanggal === now.getDate());
+
+  statusAbsenHariIni = {
+    hasMasuk: todayRows.some(r => r.jenisAbsen === 'Absen Masuk'),
+    hasPulang: todayRows.some(r => r.jenisAbsen === 'Absen Pulang'),
+    hasDinas: todayRows.some(r => r.jenisAbsen === 'Dinas Lapangan dari Rumah'),
+    masukRow: todayRows.find(r => r.jenisAbsen === 'Absen Masuk') || null,
+    pulangRow: todayRows.find(r => r.jenisAbsen === 'Absen Pulang') || null
+  };
+  absensiCache = null; // jangan biarin cache "hari ini doang" ini kepake Profil buat tampilan sebulan
+  terapkanSaranJenisAbsen();
+}
+
+// Nyorot tombol yang paling masuk akal buat diklik. Ini cuma NUDGE VISUAL —
+// tombol lain tetap aktif normal, biar tetap fleksibel buat kasus di luar
+// kebiasaan (misal shift malam, atau emang perlu absen dua kali).
+function terapkanSaranJenisAbsen() {
+  const btnMasuk = document.getElementById('jenisBtnMasuk');
+  const btnPulang = document.getElementById('jenisBtnPulang');
+  if (!btnMasuk || !btnPulang) return;
+
+  btnMasuk.classList.remove('disarankan');
+  btnPulang.classList.remove('disarankan');
+
+  if (!statusAbsenHariIni.hasMasuk && !statusAbsenHariIni.hasDinas) {
+    btnMasuk.classList.add('disarankan');
+  } else if (statusAbsenHariIni.hasMasuk && !statusAbsenHariIni.hasPulang) {
+    btnPulang.classList.add('disarankan');
+  }
+}
+
+// Chip "lagi ngapain" — dipasang di step QR/GPS/selfie biar keliatan terus,
+// jadi kalau baru sadar salah pilih pas udah di tengah proses, masih bisa balik.
+function updateJenisChip() {
+  const icon = JENIS_ICON[jenisAbsen] || '📌';
+  const html = `${icon} ${escapeHtml(jenisAbsen)} <span class="ganti-link" onclick="showAbsenStep(2)">Ganti</span>`;
+  ['chipJenis2b', 'chipJenis2c', 'chipJenis3', 'chipJenis4', 'chipJenis5'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+  const selfieLabel = document.getElementById('selfieInfoText');
+  if (selfieLabel) selfieLabel.textContent = 'Ambil foto selfie — ' + jenisAbsen;
+}
+
 function pilihJenis(jenis, perluQr, perluKeterangan, sakitMode) {
+  // Cek konflik SEBELUM apa pun diubah — kalau user batal, state lama gak keganggu.
+  if (jenis === 'Absen Masuk' && statusAbsenHariIni.hasMasuk) {
+    const jamStr = statusAbsenHariIni.masukRow ? ' jam ' + jamLabel(statusAbsenHariIni.masukRow) : '';
+    if (!confirm('Kamu sudah Absen Masuk hari ini' + jamStr + '.\n\nYakin mau Absen Masuk lagi?')) return;
+  }
+  if (jenis === 'Absen Pulang') {
+    if (statusAbsenHariIni.hasPulang) {
+      const jamStr = statusAbsenHariIni.pulangRow ? ' jam ' + jamLabel(statusAbsenHariIni.pulangRow) : '';
+      if (!confirm('Kamu sudah Absen Pulang hari ini' + jamStr + '.\n\nYakin mau Absen Pulang lagi?')) return;
+    } else if (!statusAbsenHariIni.hasMasuk && !statusAbsenHariIni.hasDinas) {
+      if (!confirm('Kamu belum tercatat Absen Masuk hari ini.\n\nYakin mau Absen Pulang?')) return;
+    }
+  }
+
   jenisAbsen = jenis; butuhQr = perluQr; butuhKeterangan = perluKeterangan; isSakit = sakitMode;
   screenshotBase64 = ''; keterangan = '';
   document.getElementById('keteranganInput').value = '';
@@ -599,6 +674,7 @@ function pilihJenis(jenis, perluQr, perluKeterangan, sakitMode) {
   document.getElementById('uploadArea').textContent = '📎 Tap untuk pilih gambar';
   document.getElementById('uploadArea').classList.remove('has-file');
   document.getElementById('screenshotPreview').style.display = 'none';
+  updateJenisChip();
   if (butuhKeterangan) { showAbsenStep('2b'); } else { lanjutSetelahKeterangan(); }
 }
 function submitKeterangan() {
