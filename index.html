@@ -179,8 +179,8 @@
       <div class="card">
         <p class="info-text">Pilih jenis absensi</p>
         <div class="jenis-label-absen">Di Kantor</div>
-        <button class="jenis-btn" onclick="pilihJenis('Absen Masuk',true,false,false)">🟢 Absen Masuk</button>
-        <button class="jenis-btn" onclick="pilihJenis('Absen Pulang',true,false,false)">🔴 Absen Pulang</button>
+        <button class="jenis-btn" id="jenisBtnMasuk" onclick="pilihJenis('Absen Masuk',true,false,false)">🟢 Absen Masuk</button>
+        <button class="jenis-btn" id="jenisBtnPulang" onclick="pilihJenis('Absen Pulang',true,false,false)">🔴 Absen Pulang</button>
         <button class="jenis-btn" onclick="pilihJenis('Ijin dari Kantor',true,true,false)">📝 Ijin dari Kantor</button>
         <div class="jenis-label-absen" style="margin-top:14px">Di Luar Kantor</div>
         <button class="jenis-btn" onclick="pilihJenis('Dinas Lapangan dari Rumah',false,true,false)">🚗 Dinas Lapangan dari Rumah</button>
@@ -191,6 +191,7 @@
     </div>
     <div class="step" id="step2b">
       <div class="card">
+        <div class="absen-jenis-chip" id="chipJenis2b"></div>
         <p class="info-text">Isi keterangan / penjelasan</p>
         <textarea id="keteranganInput" placeholder="Contoh: Demam sejak semalam, sudah info ke atasan"></textarea>
         <div id="keteranganErrorBox"></div>
@@ -199,6 +200,7 @@
     </div>
     <div class="step" id="step2c">
       <div class="card">
+        <div class="absen-jenis-chip" id="chipJenis2c"></div>
         <p class="info-text">Upload screenshot chat ke atasan sebagai bukti</p>
         <div class="upload-area" id="uploadArea" onclick="document.getElementById('screenshotInput').click()">📎 Tap untuk pilih gambar</div>
         <input type="file" id="screenshotInput" accept="image/*" style="display:none" onchange="previewScreenshot(event)">
@@ -209,6 +211,7 @@
     </div>
     <div class="step" id="step3">
       <div class="card">
+        <div class="absen-jenis-chip" id="chipJenis3"></div>
         <p class="info-text">Scan QR code di lokasi kantor</p>
         <div id="qr-reader"></div>
         <div id="qrResultBox"></div>
@@ -216,13 +219,15 @@
     </div>
     <div class="step" id="step4">
       <div class="card">
+        <div class="absen-jenis-chip" id="chipJenis4"></div>
         <p class="info-text">Mengambil lokasi GPS...</p>
         <div id="locationResultBox"></div>
       </div>
     </div>
     <div class="step" id="step5">
       <div class="card">
-        <p class="info-text">Ambil foto selfie</p>
+        <div class="absen-jenis-chip" id="chipJenis5"></div>
+        <p class="info-text" id="selfieInfoText">Ambil foto selfie</p>
         <video id="camera-view" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
         <img id="captured-photo" style="display:none;">
