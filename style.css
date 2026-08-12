@@ -280,6 +280,28 @@
     display: flex; align-items: center; gap: 10px;
   }
   .jenis-btn:active { border-color: var(--mint); background: var(--mint-ink); }
+
+  /* Tombol yang "disarankan" berdasarkan status absen hari ini
+     (belum ada Absen Masuk -> sorot Masuk; udah ada tapi belum Pulang -> sorot Pulang).
+     Bukan satu-satunya yang bisa diklik — cuma nudge visual, tombol lain tetap aktif. */
+  .jenis-btn.disarankan {
+    border: 2px solid var(--mint); background: var(--mint-ink); font-weight: 800;
+  }
+  .jenis-btn.disarankan::after {
+    content: 'Disarankan'; margin-left: auto; font-size: 10px; font-weight: 800;
+    color: var(--mint-text); background: var(--surface); padding: 3px 8px; border-radius: 999px;
+    letter-spacing: 0.3px; text-transform: uppercase; flex-shrink: 0;
+  }
+
+  /* Chip pengingat "lagi absen apa" — nempel di step QR/GPS/selfie biar keliatan
+     terus sampai submit, jadi kalau salah pilih masih ketauan sebelum kekirim. */
+  .absen-jenis-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2);
+    border: 1.5px solid var(--border); border-radius: 999px; padding: 7px 14px;
+    font-size: 12.5px; font-weight: 800; color: var(--ink); margin-bottom: 12px;
+  }
+  .absen-jenis-chip .ganti-link { color: var(--mint-text); font-weight: 800; cursor: pointer; margin-left: 4px; }
+
   #qr-reader { width: 100%; border-radius: var(--radius-sm); overflow: hidden; margin-top: 8px; border: 1.5px solid var(--border); }
   #camera-view, #captured-photo { width: 100%; border-radius: var(--radius-sm); margin-top: 12px; }
   .upload-area {
