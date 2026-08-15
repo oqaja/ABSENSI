@@ -1102,7 +1102,8 @@ function showLoadingError(msg) {
 // ===== SISTEM POIN KEHADIRAN (dipakai buat Leaderboard) =====
 
 // Absen Masuk / check-in Dinas Lapangan: makin pagi makin gede bonusnya
-// <08:00 -> 100 + 1 poin/menit lebih awal (tanpa batas atas)
+// <08:00 -> 100 + 1 poin/menit lebih awal, BONUS DICAP MAKSIMAL 100 (jadi total max 200),
+//           dicapai di jam 06:20 (100 menit lebih awal) — lebih pagi dari itu, poinnya tetep 200
 // 08:00-08:05 -> turun linear 100 -> 95
 // 08:05-09:00 -> turun linear 95 -> 0
 // >=09:00 -> 0
@@ -1113,8 +1114,8 @@ function scoreAbsenMasuk(jam, menit) {
   const lateHard = 9 * 60;        // 09:00
 
   if (t < startWork) {
-    const earlyMinutes = startWork - t;
-    return 100 + earlyMinutes; // +1 poin per menit lebih awal
+    const earlyMinutes = Math.min(startWork - t, 100); // bonus dicap di 100 menit lebih awal (06:20)
+    return 100 + earlyMinutes; // maksimal 200
   }
   if (t <= lateSoft) {
     const ratio = (t - startWork) / (lateSoft - startWork);
@@ -1168,13 +1169,28 @@ function scoreIjinKantor(jam, menit) {
 }
 
 // Durasi kerja Dinas Lapangan (Pulang dari Luar - Dinas Lapangan dari Rumah), target 9 jam.
-// Boleh lebih dari 100 kalau lembur beneran jauh.
+// Boleh lebih dari 100 kalau checkout SEBELUM jam 17:00 tapi durasinya udah lewat 9 jam
+// (mulai dinasnya pagi banget). Begitu checkout jam 17:00 ke atas, dicap 100 — gak ada
+// bonus lembur tambahan lagi walau durasinya jauh lebih dari 9 jam.
+// Skor Dinas Lapangan dari DURASI KERJA AKTUAL (checkout - checkin), bukan
+// dirata-rata sama bonus checkin lagi — itu yang bikin gak adil sebelumnya
+// (checkin super pagi malah keencer gara-gara digabung skor checkout).
+// 9 jam kerja = 100 poin (basis).
+// Lembur (>9 jam) dapet bonus +5 poin/jam, dicap maksimal 120 (dicapai di 13 jam kerja) —
+// tetep ada insentif buat lembur beneran, tapi gak ngajak begadang demi ngejar poin.
 function scoreDurasiKerja(jamMulai, menitMulai, jamAkhir, menitAkhir) {
   const mulai = jamMulai * 60 + menitMulai;
   const akhir = jamAkhir * 60 + menitAkhir;
   const durasiMenit = Math.max(0, akhir - mulai);
-  const target = 9 * 60; // 9 jam kerja penuh
-  return Math.round((durasiMenit / target) * 100);
+  const target = 9 * 60; // 9 jam kerja penuh = basis 100 poin
+
+  if (durasiMenit <= target) {
+    return Math.round((durasiMenit / target) * 100);
+  }
+
+  const lemburJam = (durasiMenit - target) / 60;
+  const skor = 100 + lemburJam * 5; // +5 poin per jam lembur
+  return Math.min(Math.round(skor), 120); // dicap maksimal 120
 }
 
 // Hitung skor satu hari berdasarkan kumpulan baris absen di hari itu
@@ -1186,11 +1202,11 @@ function computeDailyScore(dayRows) {
 
   if (has('Dinas Lapangan dari Rumah')) {
     const mulai = get('Dinas Lapangan dari Rumah');
-    const checkinScore = scoreAbsenMasuk(mulai.jam, mulai.menit);
     const akhir = get('Pulang dari Luar');
-    if (!akhir) return checkinScore; // belum ada Pulang dari Luar, pakai skor check-in aja
-    const checkoutScore = scoreDurasiKerja(mulai.jam, mulai.menit, akhir.jam, akhir.menit);
-    return Math.round((checkinScore + checkoutScore) / 2);
+    // Belum checkout: skor sementara dari jam checkin (biar ada angka, self-correct pas nanti checkout).
+    if (!akhir) return scoreAbsenMasuk(mulai.jam, mulai.menit);
+    // Udah checkout: murni dari durasi kerja aktual, gak digabung sama bonus checkin lagi.
+    return scoreDurasiKerja(mulai.jam, mulai.menit, akhir.jam, akhir.menit);
   }
 
   if (has('Ijin dari Rumah')) {
