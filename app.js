@@ -1172,25 +1172,16 @@ function scoreIjinKantor(jam, menit) {
 // Boleh lebih dari 100 kalau checkout SEBELUM jam 17:00 tapi durasinya udah lewat 9 jam
 // (mulai dinasnya pagi banget). Begitu checkout jam 17:00 ke atas, dicap 100 — gak ada
 // bonus lembur tambahan lagi walau durasinya jauh lebih dari 9 jam.
-// Skor Dinas Lapangan dari DURASI KERJA AKTUAL (checkout - checkin), bukan
-// dirata-rata sama bonus checkin lagi — itu yang bikin gak adil sebelumnya
-// (checkin super pagi malah keencer gara-gara digabung skor checkout).
-// 9 jam kerja = 100 poin (basis).
-// Lembur (>9 jam) dapet bonus +5 poin/jam, dicap maksimal 120 (dicapai di 13 jam kerja) —
-// tetep ada insentif buat lembur beneran, tapi gak ngajak begadang demi ngejar poin.
+// Skor Dinas Lapangan dari DURASI KERJA AKTUAL (checkout - checkin), murni
+// linear — 9 jam (540 menit) = 100 poin, gak ada cap di atasnya. Sebelumnya
+// dicap 120, tapi itu ternyata gak adil buat yang kerja jauh lebih lama
+// (14 jam cuma dapet 120, padahal proporsional harusnya ~156).
 function scoreDurasiKerja(jamMulai, menitMulai, jamAkhir, menitAkhir) {
   const mulai = jamMulai * 60 + menitMulai;
   const akhir = jamAkhir * 60 + menitAkhir;
   const durasiMenit = Math.max(0, akhir - mulai);
-  const target = 9 * 60; // 9 jam kerja penuh = basis 100 poin
-
-  if (durasiMenit <= target) {
-    return Math.round((durasiMenit / target) * 100);
-  }
-
-  const lemburJam = (durasiMenit - target) / 60;
-  const skor = 100 + lemburJam * 5; // +5 poin per jam lembur
-  return Math.min(Math.round(skor), 120); // dicap maksimal 120
+  const target = 9 * 60; // 540 menit = basis 100 poin
+  return Math.round((durasiMenit / target) * 100);
 }
 
 // Hitung skor satu hari berdasarkan kumpulan baris absen di hari itu
