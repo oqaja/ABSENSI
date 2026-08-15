@@ -394,6 +394,14 @@
   }
   .riwayat-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 20px 0; font-weight: 600; }
 
+  /* Badge poin harian di Detail Karyawan (Mode HR doang) — warna berubah sesuai skor */
+  .riwayat-poin-badge {
+    font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; margin-left: auto;
+  }
+  .riwayat-poin-badge.poin-bagus  { color: var(--mint-text); background: var(--mint-ink); }
+  .riwayat-poin-badge.poin-sedang { color: #8A6300; background: #FBF0D2; }
+  .riwayat-poin-badge.poin-kurang { color: var(--danger-text); background: var(--danger-ink); }
+
   .profil-reset { text-align: center; margin-top: 24px; padding-bottom: 8px; }
   .profil-reset button {
     background: var(--surface); border: 1.5px solid rgba(226,69,69,0.3); color: var(--danger-text);
