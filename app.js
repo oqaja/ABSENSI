@@ -1836,6 +1836,14 @@ function hrRenderDetailRiwayat(absensi, month, year) {
     const dinasBadge = (hasDinas && !hasMasuk)
       ? '<span class="riwayat-dinas-badge">Dinas Lapangan (tanpa Absen Masuk)</span>' : '';
 
+    // Skor hari itu — pakai fungsi yang sama kayak Leaderboard, biar angkanya
+    // konsisten. Satu skor per hari (bukan per baris), karena kalau ada
+    // beberapa jenis absen di hari yang sama, cuma yang prioritas tertinggi
+    // yang dipakai (lihat computeDailyScore).
+    const skorHari = computeDailyScore(itemsForDay);
+    const kelasPoin = skorHari >= 100 ? 'poin-bagus' : skorHari >= 50 ? 'poin-sedang' : 'poin-kurang';
+    const poinBadge = `<span class="riwayat-poin-badge ${kelasPoin}">${skorHari} poin</span>`;
+
     const itemsHtml = items.map(row => {
       const icon = JENIS_ICON[row.jenisAbsen] || '📌';
       const jam = String(row.jam).padStart(2, '0') + ':' + String(row.menit).padStart(2, '0');
@@ -1861,7 +1869,7 @@ function hrRenderDetailRiwayat(absensi, month, year) {
     }).join('');
 
     return `<div class="riwayat-day-card">
-      <div class="riwayat-day-title" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-family:var(--font-display); font-weight:800; font-size:13px; color:var(--ink); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px">${dayName}, Tgl ${tgl} ${dinasBadge}</div>
+      <div class="riwayat-day-title" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-family:var(--font-display); font-weight:800; font-size:13px; color:var(--ink); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px">${dayName}, Tgl ${tgl} ${dinasBadge}${poinBadge}</div>
       ${itemsHtml}
     </div>`;
   }).join('');
