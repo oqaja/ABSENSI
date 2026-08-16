@@ -355,8 +355,10 @@ async function gateVerifikasiPin() {
 
 // Halaman Kreatif dilayani dari folder terpisah di domain yang sama.
 // Karena satu domain, token login tetap terbaca di sana.
+// Kreatif & Produksi sekarang satu folder sama app ini — otomatis masuk
+// cakupan PWA yang ke-install, gak ada lagi resiko "kelempar" ke browser.
 const MENU_ROLE = {
-  kreatif:  { emoji: '🎨', judul: 'Report Kreatif',  sub: 'Insight platform & progres konten harian', file: '/REPORT-KREATIF/' },
+  kreatif:  { emoji: '🎨', judul: 'Report Kreatif',  sub: 'Insight platform & progres konten harian', file: 'kreatif.html' },
   produksi: { emoji: '🏭', judul: 'Report Produksi', sub: 'Isi dan lihat laporan tugas tim Produksi', file: 'produksi.html' }
 };
 
