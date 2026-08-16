@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Report Creative</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e1512">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#0e1512;
+    --card:#161f1a;
+    --accent:#25D366;
+    --accent-dark:#128C4A;
+    --text:#eaf3ee;
+    --muted:#8fa398;
+    --border:#233029;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:24px 16px 60px;
+  }
+  .wrap{width:100%;max-width:480px;}
+
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .back{
+    width:34px;height:34px;flex-shrink:0;border-radius:50%;
+    background:var(--card);border:1px solid var(--border);color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;cursor:pointer;text-decoration:none;
+  }
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:0.2px;}
+  .sub{color:var(--muted);font-size:13px;}
+
+  .who{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(37,211,102,0.12);color:var(--accent);
+    border:1px solid rgba(37,211,102,0.25);
+    padding:5px 11px;border-radius:999px;
+    font-size:11.5px;font-weight:700;letter-spacing:0.3px;
+    margin-bottom:16px;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;}
+  input[type=date]{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:#0e1512;
+    color:var(--text);
+    font-size:15px;
+    color-scheme:dark;
+  }
+  .status{font-size:13px;color:var(--muted);margin-top:10px;min-height:16px;}
+  .status.error{color:#ff8a80;}
+  pre.preview{
+    white-space:pre-wrap;
+    word-wrap:break-word;
+    font-family:'SF Mono',Consolas,Menlo,monospace;
+    font-size:13.5px;
+    line-height:1.5;
+    background:#0e1512;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    margin:0;
+    min-height:60px;
+  }
+  button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:14px;
+  }
+  .btn-share{background:var(--accent);color:#04240f;}
+  .btn-share:active{background:var(--accent-dark);}
+  .btn-share:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-copy{
+    background:transparent;color:var(--text);
+    border:1px solid var(--border);margin-top:8px;
+  }
+
+  /* Layar penjaga akses */
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .gate{
+    min-height:70vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+  }
+  .gate .emoji{font-size:46px;margin-bottom:14px;}
+  .gate h2{font-size:19px;margin:0 0 8px;}
+  .gate p{color:var(--muted);font-size:13.5px;line-height:1.6;margin:0 0 18px;max-width:320px;}
+  .gate a.cta{
+    display:block;width:100%;max-width:280px;padding:14px;
+    background:var(--accent);color:#04240f;border-radius:12px;
+    text-decoration:none;font-weight:600;font-size:15px;
+  }
+  .spinner{
+    width:32px;height:32px;border:3px solid var(--border);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){ .spinner{animation-duration:2.4s;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. Memeriksa akses -->
+  <div class="screen active" id="screenLoading">
+    <div class="gate">
+      <div class="spinner"></div>
+      <p style="margin-top:16px">Memeriksa akses…</p>
+    </div>
+  </div>
+
+  <!-- 2. Belum login / sesi habis -->
+  <div class="screen" id="screenSesi">
+    <div class="gate">
+      <div class="emoji">⏳</div>
+      <h2>Perlu masuk dulu</h2>
+      <p>Halaman ini memakai sesi login dari app Absensi. Masuk di sana, lalu buka menu Report Kreatif.</p>
+      <a class="cta" id="linkMasuk" href="#">Buka App Absensi</a>
+    </div>
+  </div>
+
+  <!-- 3. Role tidak berhak -->
+  <div class="screen" id="screenTolak">
+    <div class="gate">
+      <div class="emoji">🔒</div>
+      <h2>Halaman ini bukan untuk role kamu</h2>
+      <p id="tolakPesan">Report Kreatif cuma bisa dibuka oleh tim Kreatif.</p>
+      <a class="cta" id="linkKembali" href="#">Kembali ke App</a>
+    </div>
+  </div>
+
+  <!-- 4. Halaman utama -->
+  <div class="screen" id="screenUtama">
+    <div class="topbar">
+      <a class="back" id="linkBack" href="#">←</a>
+      <div>
+        <h1>📊 Daily Report Creative</h1>
+        <div class="sub">Shoe Police — Insight Platform</div>
+      </div>
+    </div>
+
+    <div class="who" id="whoBox">—</div>
+
+    <div class="card">
+      <label for="datePicker">Pilih tanggal</label>
+      <input type="date" id="datePicker">
+      <div class="status" id="status">Memuat data…</div>
+    </div>
+
+    <div class="card">
+      <label>Preview report</label>
+      <pre class="preview" id="preview">—</pre>
+      <button class="btn-share" id="shareBtn" disabled>Share ke WhatsApp</button>
+      <button class="btn-copy" id="copyBtn" disabled>Copy teks</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =====================================================================
+// URL Web App Apps Script REPORT KREATIF (spreadsheet kreatif, standalone
+// project — beda dari URL app Absensi).
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2FBnb68lCgmCe4iW2td12aQ_zvG0rqORuaFe8evdJFHQyKiH4QwZdxCa9cOjormAJ/exec';
+
+// Sekarang satu folder sama index.html, jadi cukup path relatif.
+const URL_APP_ABSENSI = './index.html';
+// =====================================================================
+
+const HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+const datePicker = document.getElementById('datePicker');
+const statusEl = document.getElementById('status');
+const previewEl = document.getElementById('preview');
+const shareBtn = document.getElementById('shareBtn');
+const copyBtn = document.getElementById('copyBtn');
+
+let currentText = '';
+
+// ===== SESI =====
+// Token disimpan app Absensi di localStorage. Sekarang halaman ini satu
+// folder (dan satu cakupan PWA) sama app Absensi, jadi tokennya kebaca
+// langsung tanpa perlu keluar app.
+function getToken() { return localStorage.getItem('absensi_token') || ''; }
+
+function tampilkanLayar(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function pasangLinkBalik() {
+  ['linkMasuk','linkKembali','linkBack'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.href = URL_APP_ABSENSI;
+  });
+}
+
+// ===== FORMAT =====
+function todayISO() {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d - tzOffset).toISOString().slice(0, 10);
+}
+
+function formatTanggalIndo(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  return `${HARI[dateObj.getDay()]}, ${d} ${BULAN[m - 1]} ${y}`;
+}
+
+function toArrow(trendRaw) {
+  if (trendRaw === null || trendRaw === undefined) return '';
+  const t = String(trendRaw).trim().toLowerCase();
+  if (t.includes('⬆') || t === 'naik' || t === 'up') return '⬆️';
+  if (t.includes('⬇') || t === 'turun' || t === 'down') return '⬇️';
+  return String(trendRaw);
+}
+
+function fmtNum(n) {
+  const num = Number(n);
+  if (isNaN(num)) return String(n ?? '-');
+  return num.toLocaleString('en-US');
+}
+
+function kontenLine(konten, key) {
+  if (!konten || konten.error || !konten[key]) return null;
+  return konten[key];
+}
+
+function buildReportText(data) {
+  const tgl = formatTanggalIndo(data.date);
+  const konten = data.konten;
+
+  let kontenBlock = '';
+  const order = [
+    { key: 'videoPendek', label: 'Video Pendek' },
+    { key: 'videoPanjang', label: 'Video Panjang' },
+    { key: 'carousel', label: 'Carousel' }
+  ];
+  order.forEach(item => {
+    const c = kontenLine(konten, item.key);
+    if (!c) return;
+    kontenBlock += `*${item.label}*\n* Target = ${c.target} Konten/bulan\n* Progres = ${c.progres}\n`;
+  });
+
+  return `*DAILY REPORT CREATIVE*
+${tgl}
+-—
+${kontenBlock}*Insight Intagram*
+- Views = ${fmtNum(data.ig.views)} ${toArrow(data.ig.viewsTrend)}
+- Engage = ${fmtNum(data.ig.engage)} ${toArrow(data.ig.engageTrend)}
+*Insight Tiktok*
+- Views = ${fmtNum(data.tt.views)} ${toArrow(data.tt.viewsTrend)}
+- Engage = ${fmtNum(data.tt.engage)} ${toArrow(data.tt.engageTrend)}
+- \u2060Revenue = Rp ${fmtNum(data.tt.revenue)} ${toArrow(data.tt.revenueTrend)}
+*Insight Youtube*
+- Views = ${fmtNum(data.yt.views)} ${toArrow(data.yt.viewsTrend)}
+- \u2060Revenue = Rp ${fmtNum(data.yt.revenue)} ${toArrow(data.yt.revenueTrend)}`;
+}
+
+// ===== AMBIL DATA =====
+async function loadReport(dateISO) {
+  statusEl.textContent = 'Memuat data…';
+  statusEl.classList.remove('error');
+  shareBtn.disabled = true;
+  copyBtn.disabled = true;
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=report&date=${dateISO}&token=${encodeURIComponent(getToken())}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    // Sesi habis di tengah pemakaian -> balik ke layar masuk
+    if (data.code === 'UNAUTHORIZED') { tampilkanLayar('screenSesi'); return; }
+    if (data.code === 'FORBIDDEN')    { tampilkanLayar('screenTolak'); return; }
+
+    if (data.error === 'not_found') {
+      statusEl.textContent = 'Tidak ada data untuk tanggal ini.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+    if (data.error) {
+      statusEl.textContent = 'Data belum ada di sheet.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+
+    currentText = buildReportText(data);
+    previewEl.textContent = currentText;
+    statusEl.textContent = 'Data ditemukan ✓';
+    shareBtn.disabled = false;
+    copyBtn.disabled = false;
+  } catch (err) {
+    statusEl.textContent = 'Gagal ambil data. Cek koneksi internet.';
+    statusEl.classList.add('error');
+    console.error(err);
+  }
+}
+
+// ===== PENJAGA AKSES =====
+// Yang menentukan boleh atau tidak adalah SERVER, bukan halaman ini.
+// Permintaan pertama sekaligus dipakai buat memeriksa hak akses.
+async function periksaAkses() {
+  pasangLinkBalik();
+
+  if (!getToken()) { tampilkanLayar('screenSesi'); return; }
+
+  const tanggal = todayISO();
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=report&date=${tanggal}&token=${encodeURIComponent(getToken())}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.code === 'UNAUTHORIZED') { tampilkanLayar('screenSesi'); return; }
+    if (data.code === 'FORBIDDEN') {
+      document.getElementById('tolakPesan').textContent =
+        data.message || 'Report Kreatif cuma bisa dibuka oleh tim Kreatif.';
+      tampilkanLayar('screenTolak');
+      return;
+    }
+
+    // Lolos. Tampilkan halaman, lalu render data yang sudah terlanjur diambil.
+    const namaUser = localStorage.getItem('absensi_nama') || '';
+    const roleUser = localStorage.getItem('absensi_role') || '';
+    document.getElementById('whoBox').textContent =
+      namaUser ? namaUser + (roleUser ? ' • ' + roleUser : '') : 'Terhubung';
+
+    datePicker.value = tanggal;
+    tampilkanLayar('screenUtama');
+
+    if (data.error === 'not_found' || data.error) {
+      statusEl.textContent = data.error === 'not_found'
+        ? 'Tidak ada data untuk tanggal ini.'
+        : 'Data belum ada di sheet.';
+      statusEl.classList.add('error');
+      previewEl.textContent = '—';
+      return;
+    }
+
+    currentText = buildReportText(data);
+    previewEl.textContent = currentText;
+    statusEl.textContent = 'Data ditemukan ✓';
+    shareBtn.disabled = false;
+    copyBtn.disabled = false;
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('tolakPesan').textContent =
+      'Tidak bisa menghubungi server. Cek koneksi internet, lalu muat ulang halaman.';
+    tampilkanLayar('screenTolak');
+  }
+}
+
+// ===== AKSI =====
+datePicker.addEventListener('change', () => loadReport(datePicker.value));
+
+shareBtn.addEventListener('click', () => {
+  if (!currentText) return;
+  window.open(`https://wa.me/?text=${encodeURIComponent(currentText)}`, '_blank');
+});
+
+copyBtn.addEventListener('click', async () => {
+  if (!currentText) return;
+  try {
+    await navigator.clipboard.writeText(currentText);
+    copyBtn.textContent = 'Tersalin ✓';
+    setTimeout(() => (copyBtn.textContent = 'Copy teks'), 1500);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+periksaAkses();
+</script>
+</body>
+</html>
