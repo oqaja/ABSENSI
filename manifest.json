@@ -3,7 +3,7 @@
   "short_name": "Absensi",
   "description": "Aplikasi absensi karyawan — check-in, check-out, ijin, dan leaderboard kehadiran.",
   "start_url": "./index.html",
-  "scope": "/",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F3EEE2",
