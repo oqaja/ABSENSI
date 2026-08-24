@@ -194,6 +194,15 @@ function simpanSesi(data) {
   localStorage.setItem('absensi_nama', data.nama);
   localStorage.setItem('absensi_role', data.role || '');
   nama = data.nama;
+
+  // Mulai narik data Home DI SINI JUGA, sebelum gerbang PIN ketutup dan
+  // sebelum renderHome() sempet dipanggil — bukan nunggu Home kebuka baru
+  // mulai fetch. Begitu Home beneran kebuka, fetchAbsensi/fetchLeaderboard
+  // (yang udah dikasih pengaman anti-dobel-panggil di atas) tinggal numpang
+  // ke request yang udah/lagi jalan ini, gak mulai dari nol lagi.
+  const now = new Date();
+  fetchAbsensi(nama, now.getMonth() + 1, now.getFullYear());
+  fetchLeaderboard();
 }
 
 function hapusSesi() {
@@ -1096,43 +1105,53 @@ async function renderChart(absensi, lastDay, year, month) {
   });
 }
 
+let absensiFetchPromise = null; // request yang lagi jalan — biar gak dobel manggil bareng (prefetch pas login + render Home)
+
 async function fetchAbsensi(nama, month, year) {
   if (absensiCache) return absensiCache;
   if (!nama || nama === '—') return [];
-  try {
-    // nama TIDAK dikirim lagi — server ambil dari token, jadi gak bisa ngintip riwayat orang lain
-    const url = SCRIPT_URL + '?action=getAbsensi&token=' + encodeURIComponent(getToken()) + '&month=' + month + '&year=' + year;
-    console.log('[fetchAbsensi] URL:', url);
+  if (absensiFetchPromise) return absensiFetchPromise; // udah ada yang jalan, numpang nunggu itu aja
 
-    const res = await fetch(url, { redirect: 'follow' });
-    const rawText = await res.text();
-    console.log('[fetchAbsensi] Raw response:', rawText.substring(0, 200));
+  absensiFetchPromise = (async () => {
+    try {
+      // nama TIDAK dikirim lagi — server ambil dari token, jadi gak bisa ngintip riwayat orang lain
+      const url = SCRIPT_URL + '?action=getAbsensi&token=' + encodeURIComponent(getToken()) + '&month=' + month + '&year=' + year;
+      console.log('[fetchAbsensi] URL:', url);
 
-    // Kalau response bukan JSON (HTML error page), tangkap lebih jelas
-    if (rawText.trim().startsWith('<')) {
-      console.error('[fetchAbsensi] Response berupa HTML, bukan JSON. Apps Script belum di-update atau belum di-deploy ulang.');
-      showLoadingError('⚠️ Gagal memuat data. Pastikan Apps Script sudah di-update dan di-deploy ulang.');
-      return [];
+      const res = await fetch(url, { redirect: 'follow' });
+      const rawText = await res.text();
+      console.log('[fetchAbsensi] Raw response:', rawText.substring(0, 200));
+
+      // Kalau response bukan JSON (HTML error page), tangkap lebih jelas
+      if (rawText.trim().startsWith('<')) {
+        console.error('[fetchAbsensi] Response berupa HTML, bukan JSON. Apps Script belum di-update atau belum di-deploy ulang.');
+        showLoadingError('⚠️ Gagal memuat data. Pastikan Apps Script sudah di-update dan di-deploy ulang.');
+        return [];
+      }
+
+      const data = JSON.parse(rawText);
+      console.log('[fetchAbsensi] Parsed data:', data);
+
+      // Token kadaluarsa / PIN direset HR -> minta login lagi, bukan diam-diam kosong
+      if (data.code === 'UNAUTHORIZED') { sesiHabis(); return []; }
+
+      if (data.result === 'success') {
+        absensiCache = data.data;
+        return data.data;
+      } else {
+        console.error('[fetchAbsensi] Error dari Apps Script:', data.message);
+        showLoadingError('⚠️ Error: ' + (data.message || 'Unknown error'));
+      }
+    } catch(e) {
+      console.error('[fetchAbsensi] Fetch gagal:', e);
+      showLoadingError('⚠️ Gagal koneksi ke server. Cek jaringan atau Apps Script URL.');
+    } finally {
+      absensiFetchPromise = null;
     }
+    return [];
+  })();
 
-    const data = JSON.parse(rawText);
-    console.log('[fetchAbsensi] Parsed data:', data);
-
-    // Token kadaluarsa / PIN direset HR -> minta login lagi, bukan diam-diam kosong
-    if (data.code === 'UNAUTHORIZED') { sesiHabis(); return []; }
-
-    if (data.result === 'success') {
-      absensiCache = data.data;
-      return data.data;
-    } else {
-      console.error('[fetchAbsensi] Error dari Apps Script:', data.message);
-      showLoadingError('⚠️ Error: ' + (data.message || 'Unknown error'));
-    }
-  } catch(e) {
-    console.error('[fetchAbsensi] Fetch gagal:', e);
-    showLoadingError('⚠️ Gagal koneksi ke server. Cek jaringan atau Apps Script URL.');
-  }
-  return [];
+  return absensiFetchPromise;
 }
 
 function showLoadingError(msg) {
@@ -1289,34 +1308,44 @@ function hitungTotalPoin(allData) {
 }
 
 // ===== LEADERBOARD =====
+let leaderboardFetchPromise = null; // sama kayak absensiFetchPromise, anti-dobel-panggil bareng
+
 async function fetchLeaderboard() {
-  try {
-    const now = new Date();
-    // Kirim bulan-tahun eksplisit — server sekarang cuma balikin data bulan ini
-    // (bukan seluruh histori lagi), jadi makin cepat makin lama app ini jalan.
-    const url = SCRIPT_URL + '?action=getLeaderboard&month=' + (now.getMonth() + 1) + '&year=' + now.getFullYear() + '&token=' + encodeURIComponent(getToken());
-    const res = await fetch(url, { redirect: 'follow' });
-    const rawText = await res.text();
+  if (leaderboardFetchPromise) return leaderboardFetchPromise; // udah ada yang jalan, numpang situ aja
 
-    let data;
+  leaderboardFetchPromise = (async () => {
     try {
-      data = JSON.parse(rawText);
-    } catch (parseErr) {
-      console.error('[fetchLeaderboard] Response BUKAN JSON — kemungkinan Apps Script belum di-deploy ulang dengan action "getLeaderboard". Raw response:', rawText.substring(0, 200));
+      const now = new Date();
+      // Kirim bulan-tahun eksplisit — server sekarang cuma balikin data bulan ini
+      // (bukan seluruh histori lagi), jadi makin cepat makin lama app ini jalan.
+      const url = SCRIPT_URL + '?action=getLeaderboard&month=' + (now.getMonth() + 1) + '&year=' + now.getFullYear() + '&token=' + encodeURIComponent(getToken());
+      const res = await fetch(url, { redirect: 'follow' });
+      const rawText = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        console.error('[fetchLeaderboard] Response BUKAN JSON — kemungkinan Apps Script belum di-deploy ulang dengan action "getLeaderboard". Raw response:', rawText.substring(0, 200));
+        return { ok: false, data: [] };
+      }
+
+      if (data.result === 'success') return { ok: true, data: data.data };
+
+      // Token kadaluarsa / PIN direset HR -> minta login lagi
+      if (data.code === 'UNAUTHORIZED') { sesiHabis(); return { ok: false, data: [], sesiHabis: true }; }
+
+      console.error('[fetchLeaderboard] Error dari Apps Script:', data.message);
       return { ok: false, data: [] };
+    } catch (e) {
+      console.error('fetchLeaderboard error:', e);
+      return { ok: false, data: [] };
+    } finally {
+      leaderboardFetchPromise = null;
     }
+  })();
 
-    if (data.result === 'success') return { ok: true, data: data.data };
-
-    // Token kadaluarsa / PIN direset HR -> minta login lagi
-    if (data.code === 'UNAUTHORIZED') { sesiHabis(); return { ok: false, data: [], sesiHabis: true }; }
-
-    console.error('[fetchLeaderboard] Error dari Apps Script:', data.message);
-    return { ok: false, data: [] };
-  } catch (e) {
-    console.error('fetchLeaderboard error:', e);
-    return { ok: false, data: [] };
-  }
+  return leaderboardFetchPromise;
 }
 
 // Hitung & tampilkan peringkat user saat ini di card Leaderboard pada Home
