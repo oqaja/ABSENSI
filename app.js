@@ -215,6 +215,7 @@ function hapusSesi() {
 function sesiHabis() {
   hapusSesi();
   absensiCache = null;
+  leaderboardCache = null;
   cekAppGate();
 }
 
@@ -652,7 +653,13 @@ function jamLabel(row) {
 // buat nentuin tombol mana yang disarankan & buat cek konflik pas milih jenis.
 async function refreshStatusAbsenHariIni() {
   const now = new Date();
-  absensiCache = null; // paksa fetch baru — absensiCache dari Profil bisa nyimpen bulan lain
+  // Dulu di sini ada 2 "absensiCache = null" (sebelum & sesudah fetch) buat
+  // maksa selalu ambil data baru — itu yang bikin tab Absen diam-diam
+  // ngehapus cache yang harusnya bisa dipakai bareng sama Profil/Leaderboard,
+  // biang keladi kenapa pindah tab abis dari sini masih kerasa lag. Sekarang
+  // dibiarin aja, cache TTL 60 detik udah cukup buat jaga kesegarannya —
+  // dan begitu ada absen baru masuk, submitAbsensi tetap nge-null-in cache
+  // secara eksplisit di titik yang beneran perlu.
   const rows = await fetchAbsensi(nama, now.getMonth() + 1, now.getFullYear());
   const todayRows = (rows || []).filter(r => r.tanggal === now.getDate());
 
@@ -663,7 +670,6 @@ async function refreshStatusAbsenHariIni() {
     masukRow: todayRows.find(r => r.jenisAbsen === 'Absen Masuk') || null,
     pulangRow: todayRows.find(r => r.jenisAbsen === 'Absen Pulang') || null
   };
-  absensiCache = null; // jangan biarin cache "hari ini doang" ini kepake Profil buat tampilan sebulan
   terapkanSaranJenisAbsen();
 }
 
@@ -847,6 +853,7 @@ function submitAbsensi() {
   .then(data => {
     if (stream) stream.getTracks().forEach(t => t.stop());
     absensiCache = null;
+    leaderboardCache = null; // absen baru = skor leaderboard ikut berubah, jangan pake cache lama
 
     // Token kadaluarsa di tengah jalan -> minta PIN lagi, absen belum tercatat.
     if (data.code === 'UNAUTHORIZED') {
@@ -894,7 +901,7 @@ function resetDevice() {
   localStorage.removeItem('absensi_nama'); localStorage.removeItem('absensi_pin'); localStorage.removeItem('absensi_foto');
   localStorage.removeItem('absensi_token'); localStorage.removeItem('absensi_role');
   sessionStorage.removeItem('app_gate_unlocked');
-  nama = ''; absensiCache = null;
+  nama = ''; absensiCache = null; leaderboardCache = null;
   goPage('absen');
   cekAppGate();
 }
@@ -1106,9 +1113,12 @@ async function renderChart(absensi, lastDay, year, month) {
 }
 
 let absensiFetchPromise = null; // request yang lagi jalan — biar gak dobel manggil bareng (prefetch pas login + render Home)
+let absensiCacheTime = 0;
+const CACHE_TTL_MS = 60000; // 1 menit — cukup buat mulus pindah2 tab abis login, tapi gak nyimpen data basi kelamaan
 
 async function fetchAbsensi(nama, month, year) {
-  if (absensiCache) return absensiCache;
+  const cacheSegar = absensiCache && (Date.now() - absensiCacheTime < CACHE_TTL_MS);
+  if (cacheSegar) return absensiCache;
   if (!nama || nama === '—') return [];
   if (absensiFetchPromise) return absensiFetchPromise; // udah ada yang jalan, numpang nunggu itu aja
 
@@ -1137,6 +1147,7 @@ async function fetchAbsensi(nama, month, year) {
 
       if (data.result === 'success') {
         absensiCache = data.data;
+        absensiCacheTime = Date.now();
         return data.data;
       } else {
         console.error('[fetchAbsensi] Error dari Apps Script:', data.message);
@@ -1309,8 +1320,12 @@ function hitungTotalPoin(allData) {
 
 // ===== LEADERBOARD =====
 let leaderboardFetchPromise = null; // sama kayak absensiFetchPromise, anti-dobel-panggil bareng
+let leaderboardCache = null;
+let leaderboardCacheTime = 0;
 
 async function fetchLeaderboard() {
+  const cacheSegar = leaderboardCache && (Date.now() - leaderboardCacheTime < CACHE_TTL_MS);
+  if (cacheSegar) return leaderboardCache;
   if (leaderboardFetchPromise) return leaderboardFetchPromise; // udah ada yang jalan, numpang situ aja
 
   leaderboardFetchPromise = (async () => {
@@ -1330,7 +1345,12 @@ async function fetchLeaderboard() {
         return { ok: false, data: [] };
       }
 
-      if (data.result === 'success') return { ok: true, data: data.data };
+      if (data.result === 'success') {
+        const hasil = { ok: true, data: data.data };
+        leaderboardCache = hasil;
+        leaderboardCacheTime = Date.now();
+        return hasil;
+      }
 
       // Token kadaluarsa / PIN direset HR -> minta login lagi
       if (data.code === 'UNAUTHORIZED') { sesiHabis(); return { ok: false, data: [], sesiHabis: true }; }
