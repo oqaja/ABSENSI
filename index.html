@@ -351,7 +351,7 @@
 
     <div class="card" id="hrCardBulanan">
       <div class="card-title">🗓️ Rekap Bulanan
-        <span class="muted"><button class="hr-exit-btn" style="font-size:12.5px" onclick="hrGoToKaryawan()">🔑 Kelola PIN</button></span>
+        <span class="muted"><button class="hr-exit-btn" style="font-size:12.5px" onclick="hrGoToKaryawan()">🔑 Kelola PIN</button> <button class="hr-exit-btn" style="font-size:12.5px" onclick="hrGoToPayroll()">💰 Payroll</button></span>
       </div>
       <div class="hr-filter-row">
         <select id="hrFilterBulan"></select>
@@ -424,6 +424,37 @@
       <div id="hrKrLoadingBox" class="loading-text"><span class="spinner-inline"></span>Memuat data...</div>
       <div id="hrKrErrorBox"></div>
       <div id="hrKrList"></div>
+    </div>
+  </div>
+
+  <!-- REVIEW PAYROLL -->
+  <div class="page" id="page-hr-payroll">
+    <div class="hr-top-bar">
+      <div class="hr-back-btn" onclick="hrBackToHome()">←</div>
+      <h1>Review Payroll</h1>
+    </div>
+    <p class="info-text" style="margin-top:-8px; margin-bottom:14px; text-align:left">
+      Gaji pokok gak pernah dipotong — yang naik-turun cuma Tunjangan Kehadiran & Lembur, mengikuti data absensi bulan yang dipilih. BPJS &amp; PPh21 belum termasuk, cek manual sebelum penggajian jalan.
+    </p>
+
+    <div class="card">
+      <div class="hr-filter-row">
+        <select id="hrPayrollBulan"></select>
+        <input type="number" id="hrPayrollTahun" min="2020" max="2100">
+      </div>
+      <button class="btn" onclick="hrLoadPayroll()">Tampilkan</button>
+    </div>
+
+    <div class="card" id="hrPayrollTotalCard" style="display:none">
+      <div class="card-title">💰 Total Payroll Bulan Ini</div>
+      <div id="hrPayrollTotalNum" style="font-family:var(--font-display); font-size:26px; font-weight:800; color:var(--mint-deep)">—</div>
+      <div class="muted" id="hrPayrollTotalSub" style="font-size:12.5px; margin-top:4px"></div>
+    </div>
+
+    <div class="card">
+      <div id="hrPayrollLoadingBox" class="loading-text"><span class="spinner-inline"></span>Memuat data...</div>
+      <div id="hrPayrollErrorBox"></div>
+      <div id="hrPayrollList"></div>
     </div>
   </div>
 
