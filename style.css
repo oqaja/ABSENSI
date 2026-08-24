@@ -613,3 +613,19 @@
       animation-duration: 0.01ms !important;
     }
   }
+
+  /* Review Payroll (Mode HR) */
+  .hr-payroll-item { border-bottom: 1px solid var(--border); padding: 12px 4px; }
+  .hr-payroll-item:last-child { border-bottom: none; }
+  .hr-payroll-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; }
+  .hr-payroll-nama { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .hr-payroll-total { font-size: 14.5px; font-weight: 800; color: var(--mint-deep); font-family: var(--font-display); white-space: nowrap; }
+  .hr-payroll-warn { font-size: 12px; color: var(--danger-text); font-weight: 700; margin-top: 4px; }
+  .hr-payroll-chevron { color: var(--ink-faint); font-size: 12px; margin-left: 6px; display: inline-block; transition: transform 0.2s; }
+  .hr-payroll-item.open .hr-payroll-chevron { transform: rotate(180deg); }
+  .hr-payroll-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .hr-payroll-item.open .hr-payroll-detail { display: block; }
+  .hr-payroll-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; padding: 3px 0; }
+  .hr-payroll-row span:last-child { color: var(--ink); font-weight: 700; text-align: right; }
+  .hr-payroll-row.total-row { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
+  .hr-payroll-row.total-row span:last-child { color: var(--mint-deep); font-family: var(--font-display); font-size: 14px; }
