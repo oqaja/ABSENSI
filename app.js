@@ -411,9 +411,16 @@ async function renderHome() {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   document.getElementById('countdownNum').textContent = lastDay - now.getDate();
   renderDateScroll();
+
+  // renderHomeRank & renderHomeCalendar masing-masing manggil endpoint BEDA
+  // (leaderboard vs absensi), gak saling butuh data satu sama lain. Sebelumnya
+  // ditulis satu-satu (await; await; baru panggil rank) jadi network request-nya
+  // gantian nunggu padahal bisa bareng — di sini sengaja distart duluan sebelum
+  // di-await, biar dua-duanya jalan paralel.
+  const rankPromise = renderHomeRank();
   await renderHomeCalendar();
   await renderTodayAbsen();
-  renderHomeRank();
+  await rankPromise;
 
   const savedFoto = localStorage.getItem('absensi_foto');
   const badgeAvatar = document.querySelector('.badge-circle');
@@ -1250,7 +1257,10 @@ function hitungTotalPoin(allData) {
 // ===== LEADERBOARD =====
 async function fetchLeaderboard() {
   try {
-    const url = SCRIPT_URL + '?action=getLeaderboard&token=' + encodeURIComponent(getToken());
+    const now = new Date();
+    // Kirim bulan-tahun eksplisit — server sekarang cuma balikin data bulan ini
+    // (bukan seluruh histori lagi), jadi makin cepat makin lama app ini jalan.
+    const url = SCRIPT_URL + '?action=getLeaderboard&month=' + (now.getMonth() + 1) + '&year=' + now.getFullYear() + '&token=' + encodeURIComponent(getToken());
     const res = await fetch(url, { redirect: 'follow' });
     const rawText = await res.text();
 
