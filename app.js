@@ -84,6 +84,16 @@ function loadScriptOnce(url) {
   });
 }
 
+// Restart animasi CSS di suatu elemen. CSS animation gak otomatis ulang cuma
+// karena isi/teks elemennya diganti — perlu dicabut classnya, paksa reflow
+// (baca offsetWidth), baru dipasang lagi.
+function restartAnimasi(el, className) {
+  if (!el) return;
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+}
+
 
 function hashString(str) {
   let h = 0;
@@ -748,6 +758,7 @@ async function startQrScanner() {
       // otomatis balik ke pemilihan jenis absen (bukan lanjut submit dengan status "TIDAK VALID").
       if (decodedText === VALID_QR_CODE) {
         document.getElementById('qrResultBox').innerHTML = '<div class="status-box status-ok">✅ QR terbaca &amp; valid</div>';
+        restartAnimasi(document.getElementById('qr-reader'), 'qr-sukses');
         setTimeout(() => { showAbsenStep(4); getLocation(); }, 800);
       } else {
         document.getElementById('qrResultBox').innerHTML =
@@ -796,6 +807,7 @@ function capturePhoto() {
   canvas.width = video.videoWidth; canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+  restartAnimasi(document.getElementById('cameraFlash'), 'flash');
   document.getElementById('captured-photo').src = photoBase64;
   document.getElementById('captured-photo').style.display = 'block';
   video.style.display = 'none';
@@ -848,6 +860,7 @@ function submitAbsensi() {
       document.getElementById('finalEmoji').textContent = '❌';
       statusBox.className = 'status-box status-fail'; statusBox.textContent = 'Gagal: ' + data.message;
     }
+    restartAnimasi(document.getElementById('finalEmoji'), 'anim-pop');
     showAbsenStep(6);
   })
   .catch(err => {
