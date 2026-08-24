@@ -137,7 +137,7 @@
       <div class="cal-grid" id="calDayLabels"></div>
       <div class="cal-grid" id="calGrid" style="margin-top:6px"></div>
     </div>
-    <div id="homeLoadingBox" class="loading-text" style="display:none">Memuat data...</div>
+    <div id="homeLoadingBox" class="loading-text" style="display:none"><span class="spinner-inline"></span>Memuat data...</div>
 
     <div class="section-label" style="margin-top:18px">Coming Soon</div>
     <div class="coming-soon-card">
@@ -233,6 +233,7 @@
         <div class="absen-jenis-chip" id="chipJenis5"></div>
         <p class="info-text" id="selfieInfoText">Ambil foto selfie</p>
         <video id="camera-view" autoplay playsinline></video>
+        <div class="camera-flash" id="cameraFlash"></div>
         <canvas id="canvas" style="display:none;"></canvas>
         <img id="captured-photo" style="display:none;">
         <button class="btn" id="captureBtn" onclick="capturePhoto()">📸 Ambil Foto</button>
@@ -304,7 +305,7 @@
     <div class="section-label">Riwayat Absensi</div>
     <div id="riwayatList"></div>
 
-    <div id="profilLoadingBox" class="loading-text" style="display:none">Memuat data...</div>
+    <div id="profilLoadingBox" class="loading-text" style="display:none"><span class="spinner-inline"></span>Memuat data...</div>
 
     <div class="section-label" style="margin-top:18px">Lainnya</div>
 
@@ -343,7 +344,7 @@
 
     <div class="card" id="hrCardHariIni">
       <div class="card-title">📅 Hari Ini <span class="muted" id="hrHariIniLabel"></span></div>
-      <div id="hrHariIniLoading" class="loading-text">Memuat data...</div>
+      <div id="hrHariIniLoading" class="loading-text"><span class="spinner-inline"></span>Memuat data...</div>
       <div id="hrHariIniErrorBox"></div>
       <div id="hrHariIniList"></div>
     </div>
@@ -363,7 +364,7 @@
       <button class="btn" onclick="hrLoadRekap()">Tampilkan</button>
       <button class="btn btn-secondary" id="hrResetTanggalBtn" onclick="hrResetFilterTanggal()" style="display:none">Hapus Filter Tanggal</button>
 
-      <div id="hrListLoadingBox" class="loading-text" style="display:none">Memuat data...</div>
+      <div id="hrListLoadingBox" class="loading-text" style="display:none"><span class="spinner-inline"></span>Memuat data...</div>
       <div id="hrListErrorBox"></div>
       <div id="hrEmpList" style="margin-top:6px"></div>
     </div>
@@ -420,7 +421,7 @@
 
     <div class="card">
       <input type="text" class="hr-kr-search" id="hrKrSearch" placeholder="Cari nama…" oninput="hrRenderKaryawanList()">
-      <div id="hrKrLoadingBox" class="loading-text">Memuat data...</div>
+      <div id="hrKrLoadingBox" class="loading-text"><span class="spinner-inline"></span>Memuat data...</div>
       <div id="hrKrErrorBox"></div>
       <div id="hrKrList"></div>
     </div>
