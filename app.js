@@ -1378,9 +1378,9 @@ async function renderHomeRank() {
   const result = await fetchLeaderboard();
   if (!result.ok) { badge.textContent = '—'; return; }
 
-  const ranked = result.data
-    .map(emp => ({ nama: emp.nama, poin: hitungTotalPoin(emp.absensi) }))
-    .sort((a, b) => b.poin - a.poin || a.nama.localeCompare(b.nama));
+  // Server sekarang udah ngirim poin siap pakai (dari sheet SKOR), gak perlu
+  // dihitung ulang di HP lagi kayak sebelumnya.
+  const ranked = [...result.data].sort((a, b) => b.poin - a.poin || a.nama.localeCompare(b.nama));
 
   const idx = ranked.findIndex(e => e.nama === nama);
   badge.textContent = idx === -1 ? '—' : '#' + (idx + 1);
@@ -1404,9 +1404,9 @@ async function renderLeaderboard() {
   }
   hintEl.style.display = 'none';
 
-  const ranked = result.data
-    .map(emp => ({ nama: emp.nama, poin: hitungTotalPoin(emp.absensi) }))
-    .sort((a, b) => b.poin - a.poin || a.nama.localeCompare(b.nama));
+  // Server sekarang udah ngirim poin siap pakai (dari sheet SKOR), gak perlu
+  // dihitung ulang di HP lagi kayak sebelumnya.
+  const ranked = [...result.data].sort((a, b) => b.poin - a.poin || a.nama.localeCompare(b.nama));
 
   const top3 = ranked.slice(0, 3);
   const rest = ranked.slice(3);
