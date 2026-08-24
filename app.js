@@ -66,6 +66,25 @@ let chartInstance = null;
 let statusAbsenHariIni = { hasMasuk: false, hasPulang: false, hasDinas: false, masukRow: null, pulangRow: null };
 let sudahAbsenHariIni = false; // status absen hari ini, dipakai buat auto-hide card countdown
 
+// ===== LAZY-LOAD LIBRARY EKSTERNAL =====
+// html5-qrcode & chart.js sengaja gak dimuat di index.html lagi (lihat komentar
+// di sana) — dimuat di sini, on-demand, cuma pas fiturnya beneran dipakai.
+const HTML5_QRCODE_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+const _loadedScripts = new Set();
+
+function loadScriptOnce(url) {
+  if (_loadedScripts.has(url)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = () => { _loadedScripts.add(url); resolve(); };
+    s.onerror = () => reject(new Error('Gagal memuat library: ' + url));
+    document.head.appendChild(s);
+  });
+}
+
+
 function hashString(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
@@ -715,7 +734,8 @@ function lanjutSetelahKeterangan() {
   if (butuhQr) { showAbsenStep(3); startQrScanner(); }
   else { qrResult = ''; showAbsenStep(4); getLocation(); }
 }
-function startQrScanner() {
+async function startQrScanner() {
+  await loadScriptOnce(HTML5_QRCODE_URL);
   if (html5QrCode) { try { html5QrCode.stop(); } catch(e){} }
   html5QrCode = new Html5Qrcode("qr-reader");
   html5QrCode.start({ facingMode:"environment" }, { fps:10, qrbox:220 },
@@ -896,7 +916,7 @@ async function renderProfil() {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
   // Render chart
-  renderChart(absensi, lastDay, now.getFullYear(), now.getMonth());
+  await renderChart(absensi, lastDay, now.getFullYear(), now.getMonth());
 
   // Render riwayat absensi
   renderRiwayat(absensi);
@@ -971,7 +991,8 @@ function escapeHtml(str) {
 
 // Grafik jam masuk harian: bar tinggi = jam check-in (Absen Masuk / Dinas Lapangan dari Rumah),
 // hijau kalau tepat waktu, merah kalau lewat 08:05, plus garis putus-putus batas 08:05.
-function renderChart(absensi, lastDay, year, month) {
+async function renderChart(absensi, lastDay, year, month) {
+  await loadScriptOnce(CHART_JS_URL);
   const BATAS_JAM = 8 + 5 / 60; // 08:05 dalam desimal jam
 
   // Ambil jam check-in PALING AWAL per hari (kalau ada beberapa baris di hari yang sama)
