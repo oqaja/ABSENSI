@@ -546,3 +546,70 @@
      kayak "kolom HP" yang center di tengah layar lebar, tapi di HP
      (viewport udah di bawah 480px) gak ada bedanya sama sekali. */
   .app-shell { max-width: 480px; margin: 0 auto; }
+
+  /* =====================================================================
+     ANIMASI — semua di sini sengaja cuma pakai transform/opacity (murah,
+     dikerjain GPU) kecuali 1 (qr-sukses, box-shadow) yang dijelasin di
+     komentarnya sendiri kenapa masih aman dipakai.
+     ===================================================================== */
+
+  /* 1. Transisi pindah tab — fade + geser dikit, bukan langsung "kedip" */
+  @keyframes pageFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .page.active { animation: pageFadeIn 0.28s ease both; }
+
+  /* 2. Feedback tombol ditekan — mengecil dikit pas disentuh.
+     .btn udah punya efek sendiri (translateY), sengaja gak ditimpa di sini. */
+  .action-card { transition: transform 0.12s ease; }
+  .action-card:active { transform: scale(0.97); }
+  .nav-item:active { transform: scale(0.93); }
+  .jenis-btn { transition: transform 0.12s ease, border-color 0.15s, background 0.15s; }
+  .jenis-btn:active { transform: scale(0.98); }
+  .today-absen-card { transition: transform 0.12s ease; }
+  .today-absen-card:active { transform: scale(0.98); }
+
+  /* 3. Kartu Home muncul halus pas pertama render, bukan langsung nongol */
+  @keyframes cardEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .action-card, .today-absen-card { animation: cardEnter 0.35s ease both; }
+
+  /* 4. Checkmark sukses "mengembang" pas absen berhasil (step6).
+     Class .anim-pop di-toggle ulang lewat JS tiap kali submit, biar
+     animasinya bisa restart (CSS animation gak otomatis ulang cuma
+     karena isi teks/emoji-nya diganti). */
+  @keyframes checkPop { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+  .anim-pop { animation: checkPop 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+
+  /* 5. Kilatan kamera pas foto selfie diambil */
+  .camera-flash {
+    position: fixed; inset: 0; background: #fff; opacity: 0;
+    pointer-events: none; z-index: 900;
+  }
+  .camera-flash.flash { animation: shutterFlash 0.35s ease; }
+  @keyframes shutterFlash { 0% { opacity: 0; } 15% { opacity: 0.85; } 100% { opacity: 0; } }
+
+  /* 6. Cincin hijau pas QR berhasil kescan. Ini animasi box-shadow (bukan
+     transform/opacity), yang di tempat lain sengaja dihindari karena berat
+     kalau JALAN TERUS-MENERUS. Ini aman karena cuma sekali tembak (0.6 detik,
+     gak looping) tiap satu kali scan berhasil, jadi biayanya kecil. */
+  @keyframes qrPulseRing { 0% { box-shadow: 0 0 0 0 rgba(0,179,131,0.55); } 100% { box-shadow: 0 0 0 22px rgba(0,179,131,0); } }
+  #qr-reader.qr-sukses { animation: qrPulseRing 0.6s ease-out; border-radius: var(--radius-sm); }
+
+  /* 7. Spinner loading — sebelumnya cuma teks polos "Memuat data..." di 5
+     tempat, sekarang dikasih lingkaran muter kayak yang udah dipakai di
+     kreatif.html/produksi.html. */
+  .spinner-inline {
+    display: inline-block; width: 16px; height: 16px; margin-right: 8px;
+    border: 2.5px solid var(--border); border-top-color: var(--mint);
+    border-radius: 50%; vertical-align: -3px;
+    animation: spinnerSpin 0.8s linear infinite;
+  }
+  @keyframes spinnerSpin { to { transform: rotate(360deg); } }
+
+  /* Semua animasi di atas otomatis lebih pelan buat yang settingan HP-nya
+     "kurangi animasi" (accessibility) — bukan dimatiin total, biar tetap
+     ada kesan responsnya, tapi gak bikin pusing. */
+  @media (prefers-reduced-motion: reduce) {
+    .page.active, .action-card, .today-absen-card, .anim-pop,
+    .camera-flash.flash, #qr-reader.qr-sukses, .spinner-inline {
+      animation-duration: 0.01ms !important;
+    }
+  }
