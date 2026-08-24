@@ -1794,6 +1794,127 @@ function hrGoToKaryawan() {
   hrLoadKaryawanList();
 }
 
+// ===== REVIEW PAYROLL =====
+let hrPayrollCache = [];
+
+function fmtRupiah(n) {
+  return 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+}
+
+function hrGoToPayroll() {
+  hrGoPage('payroll');
+  hrInitPayrollFilter();
+  hrLoadPayroll();
+}
+
+function hrInitPayrollFilter() {
+  const selBulan = document.getElementById('hrPayrollBulan');
+  const inputTahun = document.getElementById('hrPayrollTahun');
+  if (selBulan.options.length === 0) {
+    HR_BULAN_NAMES.forEach((nm, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx + 1;
+      opt.textContent = nm;
+      selBulan.appendChild(opt);
+    });
+  }
+  const now = new Date();
+  if (!selBulan.value) selBulan.value = now.getMonth() + 1;
+  if (!inputTahun.value) inputTahun.value = now.getFullYear();
+}
+
+async function hrLoadPayroll() {
+  const loading = document.getElementById('hrPayrollLoadingBox');
+  const errBox = document.getElementById('hrPayrollErrorBox');
+  const listBox = document.getElementById('hrPayrollList');
+  const totalCard = document.getElementById('hrPayrollTotalCard');
+  loading.style.display = 'block';
+  errBox.innerHTML = '';
+  listBox.innerHTML = '';
+  totalCard.style.display = 'none';
+
+  const month = document.getElementById('hrPayrollBulan').value;
+  const year = document.getElementById('hrPayrollTahun').value;
+
+  try {
+    const url = SCRIPT_URL + '?action=getPayrollSemua&month=' + month + '&year=' + year + '&token=' + encodeURIComponent(tokenHR());
+    const res = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (data.result !== 'success') {
+      if (data.code === 'UNAUTHORIZED' || data.message === 'Unauthorized') {
+        hrHandleUnauthorized(errBox);
+      } else {
+        errBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Error') + '</div>';
+      }
+      return;
+    }
+
+    hrPayrollCache = data.data || [];
+    hrRenderPayrollList();
+  } catch (e) {
+    loading.style.display = 'none';
+    errBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
+}
+
+function hrRenderPayrollList() {
+  const listBox = document.getElementById('hrPayrollList');
+  const totalCard = document.getElementById('hrPayrollTotalCard');
+  const totalNum = document.getElementById('hrPayrollTotalNum');
+  const totalSub = document.getElementById('hrPayrollTotalSub');
+
+  const valid = hrPayrollCache.filter(e => !e.error);
+  const bermasalah = hrPayrollCache.filter(e => e.error);
+
+  if (valid.length) {
+    const grandTotal = valid.reduce((sum, e) => sum + e.totalGaji, 0);
+    totalNum.textContent = fmtRupiah(grandTotal);
+    totalSub.textContent = valid.length + ' karyawan'
+      + (bermasalah.length ? ' • ' + bermasalah.length + ' belum ada data gaji' : '');
+    totalCard.style.display = 'block';
+  } else {
+    totalCard.style.display = 'none';
+  }
+
+  const sorted = [...valid].sort((a, b) => a.nama.localeCompare(b.nama));
+
+  let html = sorted.map((e, idx) => {
+    const namaSafe = escapeHtml(e.nama);
+    return `<div class="hr-payroll-item" id="hrPayrollItem${idx}">
+      <div class="hr-payroll-head" onclick="hrTogglePayrollDetail(${idx})">
+        <div class="hr-payroll-nama">${namaSafe}<span class="hr-payroll-chevron">▾</span></div>
+        <div class="hr-payroll-total">${fmtRupiah(e.totalGaji)}</div>
+      </div>
+      <div class="hr-payroll-detail">
+        <div class="hr-payroll-row"><span>Gaji Pokok</span><span>${fmtRupiah(e.gajiPokok)}</span></div>
+        <div class="hr-payroll-row"><span>Tunjangan Tetap</span><span>${fmtRupiah(e.tunjanganTetap)}</span></div>
+        <div class="hr-payroll-row"><span>Skor rata-rata (${e.jumlahHariAbsen} hari absen)</span><span>${e.skorRataRata}</span></div>
+        <div class="hr-payroll-row"><span>Tunjangan Kehadiran</span><span>${fmtRupiah(e.tunjanganKehadiranAktual)} / ${fmtRupiah(e.tunjanganKehadiranDasar)}</span></div>
+        <div class="hr-payroll-row"><span>Jam Lembur</span><span>${e.totalJamLembur} jam</span></div>
+        <div class="hr-payroll-row"><span>Total Lembur</span><span>${fmtRupiah(e.totalLembur)}</span></div>
+        <div class="hr-payroll-row total-row"><span>Total Gaji</span><span>${fmtRupiah(e.totalGaji)}</span></div>
+        <div class="info-text" style="text-align:left; margin-top:8px; font-size:11px">${escapeHtml(e.catatan || '')}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (bermasalah.length) {
+    html += bermasalah.map(e => `<div class="hr-payroll-item">
+      <div class="hr-payroll-nama">${escapeHtml(e.nama)}</div>
+      <div class="hr-payroll-warn">⚠️ ${escapeHtml(e.error)}</div>
+    </div>`).join('');
+  }
+
+  listBox.innerHTML = html || '<div class="riwayat-empty">Belum ada karyawan di sistem.</div>';
+}
+
+function hrTogglePayrollDetail(idx) {
+  const el = document.getElementById('hrPayrollItem' + idx);
+  if (el) el.classList.toggle('open');
+}
+
 async function hrLoadKaryawanList() {
   const loading = document.getElementById('hrKrLoadingBox');
   const errBox = document.getElementById('hrKrErrorBox');
