@@ -13,8 +13,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- html5-qrcode & chart.js SENGAJA gak dimuat di sini lagi — dua-duanya lumayan
+     berat (~150-200KB masing-masing) dan cuma dipakai di 1 fitur spesifik
+     (scan QR pas absen, chart di halaman Profil). Sebelumnya kedua-duanya
+     didownload & di-parse browser SEMUA orang di SETIAP buka app, walau
+     sesi itu gak pernah nyentuh salah satu fiturnya. Sekarang dimuat on-demand
+     lewat loadScriptOnce() di app.js, pas beneran dibutuhin doang. -->
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
