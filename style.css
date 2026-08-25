@@ -314,6 +314,7 @@
 
   /* ===== PROFIL ===== */
   #page-profil { padding: 32px 16px 18px; }
+  #page-slip-gaji { padding: 32px 16px 18px; }
   .profil-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-top: 8px; }
   .profil-foto-wrap { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
   .profil-foto {
