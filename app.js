@@ -125,6 +125,110 @@ function goPage(page) {
   window.scrollTo(0, 0);
 }
 
+// ===== SLIP GAJI SAYA (buat semua karyawan, bukan cuma HR) =====
+function bukaSlipGajiSaya() {
+  goPage('slip-gaji');
+  initSlipGajiFilter();
+  loadSlipGajiSaya();
+}
+
+function initSlipGajiFilter() {
+  const selBulan = document.getElementById('sgBulan');
+  const inputTahun = document.getElementById('sgTahun');
+  if (selBulan.options.length === 0) {
+    HR_BULAN_NAMES.forEach((nm, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx + 1;
+      opt.textContent = nm;
+      selBulan.appendChild(opt);
+    });
+  }
+  const now = new Date();
+  if (!selBulan.value) selBulan.value = now.getMonth() + 1;
+  if (!inputTahun.value) inputTahun.value = now.getFullYear();
+}
+
+async function loadSlipGajiSaya() {
+  const loading = document.getElementById('sgLoadingBox');
+  const errBox = document.getElementById('sgErrorBox');
+  const content = document.getElementById('sgContent');
+  loading.style.display = 'block';
+  errBox.innerHTML = '';
+  content.style.display = 'none';
+
+  const month = document.getElementById('sgBulan').value;
+  const year = document.getElementById('sgTahun').value;
+
+  try {
+    // Nama TIDAK dikirim di URL — server ambil dari token sendiri, jadi gak
+    // ada cara buat minta lihat gaji orang lain walau parameter-nya diutak-atik.
+    const url = SCRIPT_URL + '?action=getPayroll&month=' + month + '&year=' + year + '&token=' + encodeURIComponent(getToken());
+    const res = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (data.code === 'UNAUTHORIZED') { sesiHabis(); return; }
+
+    if (data.result !== 'success') {
+      errBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Belum ada data gaji buat bulan ini.') + '</div>';
+      return;
+    }
+
+    document.getElementById('sgGajiPokok').textContent = fmtRupiah(data.gajiPokok);
+    document.getElementById('sgTunjanganTetap').textContent = fmtRupiah(data.tunjanganTetap);
+    document.getElementById('sgSkorLabel').textContent = 'Skor rata-rata (' + data.jumlahHariAbsen + ' hari absen)';
+    document.getElementById('sgSkor').textContent = data.skorRataRata;
+    document.getElementById('sgTunjanganKehadiran').textContent = fmtRupiah(data.tunjanganKehadiranAktual) + ' / ' + fmtRupiah(data.tunjanganKehadiranDasar);
+    document.getElementById('sgJamLembur').textContent = data.totalJamLembur + ' jam';
+    document.getElementById('sgTotalLembur').textContent = fmtRupiah(data.totalLembur);
+    document.getElementById('sgTotalGaji').textContent = fmtRupiah(data.totalGaji);
+    document.getElementById('sgCatatan').textContent = data.catatan || '';
+    document.getElementById('sgPdfStatus').innerHTML = '';
+    content.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    errBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
+}
+
+async function unduhSlipGajiSaya() {
+  const statusBox = document.getElementById('sgPdfStatus');
+  const month = document.getElementById('sgBulan').value;
+  const year = document.getElementById('sgTahun').value;
+  statusBox.innerHTML = '<div class="status-box status-ok"><span class="spinner-inline"></span>Membuat PDF...</div>';
+
+  try {
+    // Sama kayak di atas — nama gak dikirim, diambil dari token sendiri di server.
+    const url = SCRIPT_URL + '?action=getSlipGajiPdf&month=' + month + '&year=' + year + '&token=' + encodeURIComponent(getToken());
+    const res = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+
+    if (data.code === 'UNAUTHORIZED') { sesiHabis(); return; }
+
+    if (data.result !== 'success') {
+      statusBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Gagal bikin PDF') + '</div>';
+      return;
+    }
+
+    const byteChars = atob(data.base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = data.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    statusBox.innerHTML = '<div class="status-box status-ok">✅ PDF terunduh</div>';
+  } catch (e) {
+    statusBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
+}
+
 // Masuk ke "Mode HR" DI DALAM app ini (bukan pindah ke file hr.html lagi).
 // HR key + token dari server tetap jadi lapisan keamanan beneran; ini cuma jalan pintas.
 function masukModeHR() {
