@@ -286,7 +286,13 @@
 
     <!-- Slip Gaji — buat SEMUA karyawan, bukan cuma HR. Nama diambil dari
          token sendiri di server, jadi gak bisa diutak-atik buat liat gaji orang lain. -->
-    <button class="jenis-btn" onclick="bukaSlipGajiSaya()">💰 Slip Gaji Saya</button>
+    <!-- Slip Gaji — masih prototype, sengaja dimatiin dulu buat karyawan biasa
+         biar gak nanya-nanya sebelum siap. Tinggal balikin onclick="bukaSlipGajiSaya()"
+         dan hapus badge/style ini kalau udah mau dirilis beneran. -->
+    <button class="jenis-btn" disabled style="opacity:0.55; cursor:not-allowed">
+      💰 Slip Gaji Saya
+      <span style="margin-left:auto; font-size:10px; font-weight:800; background:var(--surface-2); color:var(--ink-soft); padding:3px 8px; border-radius:999px; border:1px solid var(--border); white-space:nowrap">Segera Hadir</span>
+    </button>
 
     <!-- Stat 4 kolom -->
     <div class="section-label">Rekap Bulan Ini</div>
