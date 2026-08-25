@@ -284,6 +284,10 @@
          biar gak perlu scroll dulu buat yang tiap hari buka Mode HR. -->
     <button class="jenis-btn" onclick="masukModeHR()">🔐 Mode HR</button>
 
+    <!-- Slip Gaji — buat SEMUA karyawan, bukan cuma HR. Nama diambil dari
+         token sendiri di server, jadi gak bisa diutak-atik buat liat gaji orang lain. -->
+    <button class="jenis-btn" onclick="bukaSlipGajiSaya()">💰 Slip Gaji Saya</button>
+
     <!-- Stat 4 kolom -->
     <div class="section-label">Rekap Bulan Ini</div>
     <div class="stat-grid-4">
@@ -311,6 +315,39 @@
 
     <div class="profil-reset">
       <button onclick="resetDevice()">🔄 Ganti akun / Reset HP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SLIP GAJI SAYA (masuk lewat tombol di Profil, buat semua karyawan) ===== -->
+<div class="page" id="page-slip-gaji">
+  <div class="hr-top-bar">
+    <div class="hr-back-btn" onclick="goPage('profil')">←</div>
+    <h1>Slip Gaji Saya</h1>
+  </div>
+
+  <div class="card">
+    <div class="hr-filter-row">
+      <select id="sgBulan"></select>
+      <input type="number" id="sgTahun" min="2020" max="2100">
+    </div>
+    <button class="btn" onclick="loadSlipGajiSaya()">Tampilkan</button>
+  </div>
+
+  <div class="card">
+    <div id="sgLoadingBox" class="loading-text" style="display:none"><span class="spinner-inline"></span>Memuat data...</div>
+    <div id="sgErrorBox"></div>
+    <div id="sgContent" style="display:none">
+      <div class="hr-payroll-row"><span>Gaji Pokok</span><span id="sgGajiPokok"></span></div>
+      <div class="hr-payroll-row"><span>Tunjangan Tetap</span><span id="sgTunjanganTetap"></span></div>
+      <div class="hr-payroll-row"><span id="sgSkorLabel">Skor rata-rata</span><span id="sgSkor"></span></div>
+      <div class="hr-payroll-row"><span>Tunjangan Kehadiran</span><span id="sgTunjanganKehadiran"></span></div>
+      <div class="hr-payroll-row"><span>Jam Lembur</span><span id="sgJamLembur"></span></div>
+      <div class="hr-payroll-row"><span>Total Lembur</span><span id="sgTotalLembur"></span></div>
+      <div class="hr-payroll-row total-row"><span>Total Gaji</span><span id="sgTotalGaji"></span></div>
+      <div class="info-text" style="text-align:left; margin-top:8px; font-size:11px" id="sgCatatan"></div>
+      <button class="btn" style="margin-top:14px" onclick="unduhSlipGajiSaya()">📄 Unduh PDF</button>
+      <div id="sgPdfStatus"></div>
     </div>
   </div>
 </div>
