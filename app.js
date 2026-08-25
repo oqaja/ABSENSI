@@ -1896,6 +1896,8 @@ function hrRenderPayrollList() {
         <div class="hr-payroll-row"><span>Total Lembur</span><span>${fmtRupiah(e.totalLembur)}</span></div>
         <div class="hr-payroll-row total-row"><span>Total Gaji</span><span>${fmtRupiah(e.totalGaji)}</span></div>
         <div class="info-text" style="text-align:left; margin-top:8px; font-size:11px">${escapeHtml(e.catatan || '')}</div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="event.stopPropagation(); hrUnduhSlipGaji('${namaSafe.replace(/'/g, "\\'")}', ${e.bulan}, ${e.tahun}, ${idx})">📄 Unduh PDF Slip Gaji</button>
+        <div id="hrPdfStatus${idx}"></div>
       </div>
     </div>`;
   }).join('');
@@ -1913,6 +1915,40 @@ function hrRenderPayrollList() {
 function hrTogglePayrollDetail(idx) {
   const el = document.getElementById('hrPayrollItem' + idx);
   if (el) el.classList.toggle('open');
+}
+
+async function hrUnduhSlipGaji(nama, month, year, idx) {
+  const statusBox = document.getElementById('hrPdfStatus' + idx);
+  if (statusBox) statusBox.innerHTML = '<div class="status-box status-ok"><span class="spinner-inline"></span>Membuat PDF...</div>';
+
+  try {
+    const url = SCRIPT_URL + '?action=getSlipGajiPdf&nama=' + encodeURIComponent(nama) + '&month=' + month + '&year=' + year + '&token=' + encodeURIComponent(tokenHR());
+    const res = await fetch(url, { redirect: 'follow' });
+    const data = await res.json();
+
+    if (data.result !== 'success') {
+      if (statusBox) statusBox.innerHTML = '<div class="status-box status-fail">⚠️ ' + escapeHtml(data.message || 'Gagal bikin PDF') + '</div>';
+      return;
+    }
+
+    // Base64 -> Blob -> trigger download, tanpa nyimpen apa pun ke server.
+    const byteChars = atob(data.base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = data.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    if (statusBox) statusBox.innerHTML = '<div class="status-box status-ok">✅ PDF terunduh</div>';
+  } catch (e) {
+    if (statusBox) statusBox.innerHTML = '<div class="status-box status-fail">⚠️ Gagal koneksi ke server.</div>';
+  }
 }
 
 async function hrLoadKaryawanList() {
