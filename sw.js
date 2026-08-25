@@ -1,6 +1,6 @@
 // Service worker untuk Absensi Karyawan PWA
 // Naikkan versi ini (v1 -> v2 -> ...) tiap kali update index.html biar cache lama dibuang otomatis
-const CACHE_NAME = 'absensi-cache-v38';
+const CACHE_NAME = 'absensi-cache-v39';
 
 const APP_SHELL = [
   './',
@@ -39,18 +39,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App shell & aset statis: coba cache dulu (biar cepat & bisa offline), fallback ke network.
+  // App shell & aset statis: NETWORK-FIRST (bukan cache-first lagi).
+  // Sebelumnya cache-first bikin update kode gak langsung kepake — HP/app
+  // selalu pakai versi lama yang tersimpan dulu, baru ambil yang baru
+  // belakangan (kadang gak sempet kepake sama sekali sebelum halaman keburu
+  // tampil). Buat app yang sesering ini diupdate, itu kebalik dari yang
+  // dibutuhin. Sekarang: coba ambil dari server dulu tiap kali; cache cuma
+  // jadi cadangan kalau internetnya mati (biar offline tetap jalan).
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        // simpan salinan aset statis baru ke cache (best-effort)
-        if (event.request.method === 'GET' && response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-    })
+    fetch(event.request).then((response) => {
+      if (event.request.method === 'GET' && response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });
